@@ -1,5 +1,0 @@
-HTTP GET Player[] player_pool(draft_id)
-HTTP GET Player player(player_id)
-HTTP GET Team team(draft_id, team_id)
-HTTP GET int run_draft()
-HTTP GET DraftHistory draft_history(draft_id)
