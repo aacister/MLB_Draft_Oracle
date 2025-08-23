@@ -80,11 +80,14 @@ const DraftTracker = () => {
         return <TeamsTab teams={draftData?.teams} setHighlightedPlayerId={setHighlightedPlayerId} setActiveTab={setActiveTab} />;
       case 'history':
         return <HistoryTab draft_history={draftData?.draft_history} />;
+     // case 'draft':
+     //   return <DraftBoardTab players={draftData?.player_pool?.players} />;
       case 'draft':
-        return <DraftBoardTab players={draftData?.player_pool?.players} />;
-      case 'players':
-        return <PlayersTab players={draftData?.player_pool?.players} highlightedPlayerId={highlightedPlayerId}
-        setHighlightedPlayerId={setHighlightedPlayerId}/>;
+        return <PlayersTab players={draftData?.player_pool?.players} 
+        highlightedPlayerId={highlightedPlayerId}
+        setHighlightedPlayerId={setHighlightedPlayerId}
+        draftHistory={draftData?.draft_history}
+        />;
       default:
         return <div>Select a tab</div>;
     }

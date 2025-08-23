@@ -3,7 +3,7 @@ import { Search, Filter, ChevronUp, ChevronDown } from 'lucide-react';
 import EmptyState from '../common/EmptyState';
 //import { useDraft } from '../../hooks/useDraft.jsx';
 
-const PlayersTab = ({ players, onSelectPlayer, highlightedPlayerId, setHighlightedPlayerId }) => {
+const PlayersTab = ({ players, onSelectPlayer, highlightedPlayerId, setHighlightedPlayerId, draftHistory = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [positionFilter, setPositionFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState('name');
@@ -40,6 +40,18 @@ const PlayersTab = ({ players, onSelectPlayer, highlightedPlayerId, setHighlight
       return () => clearTimeout(timer);
     }
   }, [highlightedPlayerId, setHighlightedPlayerId]);
+
+  const draftedPlayersMap = useMemo(() => {
+    const map = new Map();
+    if (draftHistory && Array.isArray(draftHistory)) {
+      draftHistory.forEach(pick => {
+        if (pick.selection) {
+          map.set(pick.selection, pick.team);
+        }
+      });
+    }
+    return map;
+  }, [draftHistory]);
 
   if (!players || !players.length) {
     return <EmptyState title="No draft board data available" />;
@@ -101,6 +113,14 @@ const PlayersTab = ({ players, onSelectPlayer, highlightedPlayerId, setHighlight
           : bValue.localeCompare(aValue);
       }
 
+      if (sortBy === 'drafted') {
+        aValue = a.is_drafted ? (draftedPlayersMap.get(a.name) || 'Yes') : '';
+        bValue = b.is_drafted ? (draftedPlayersMap.get(b.name) || 'Yes') : '';
+        return sortDirection === 'asc'
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+
       // Handle stat sorting
       if (statColumns.includes(sortBy)) {
         aValue = parseFloat(a.stats?.[sortBy]) || 0;
@@ -112,7 +132,7 @@ const PlayersTab = ({ players, onSelectPlayer, highlightedPlayerId, setHighlight
     });
 
     return filtered;
-  }, [allPlayers, searchTerm, positionFilter, sortBy, sortDirection]);
+  }, [allPlayers, searchTerm, positionFilter, sortBy, sortDirection,  draftedPlayersMap]);
 
   const handleSort = (column) => {
     if (sortBy === column) {
@@ -140,6 +160,11 @@ const PlayersTab = ({ players, onSelectPlayer, highlightedPlayerId, setHighlight
       P: 'text-purple-600 bg-purple-50'
     };
     return colors[position] || 'text-gray-600 bg-gray-50';
+  };
+
+  const getDraftedTeam = (player) => {
+    if (!player.is_drafted) return '';
+    return draftedPlayersMap.get(player.name) || '';
   };
 
   const SortButton = ({ column, children }) => (
@@ -233,6 +258,9 @@ const PlayersTab = ({ players, onSelectPlayer, highlightedPlayerId, setHighlight
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <SortButton column="position">Position</SortButton>
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <SortButton column="drafted">Drafted?</SortButton>
+                  </th>
                   {statColumns.map(statKey => (
                     <th key={statKey} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <SortButton column={statKey}>
@@ -263,6 +291,15 @@ const PlayersTab = ({ players, onSelectPlayer, highlightedPlayerId, setHighlight
                       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPositionColor(player.position)}`}>
                         {player.position}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {getDraftedTeam(player) && (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full text-red-900  ">
+                            {getDraftedTeam(player)}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     {statColumns.map(statKey => (
                       <td key={statKey} className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

@@ -5,7 +5,7 @@ import EmptyState from '../common/EmptyState';
 const TeamsTab = ({ teams, setHighlightedPlayerId, setActiveTab }) => {
   const handlePlayerClick = (playerId) => {
     setHighlightedPlayerId(playerId);
-    setActiveTab('players');
+    setActiveTab('draft');
   };
 
 

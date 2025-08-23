@@ -12,6 +12,5 @@ export const TAB_CONFIG = [
 
   { id: 'history', label: 'Draft History', icon: 'History' },
   { id: 'teams', label: 'Team Rosters', icon: 'Users' },
-  { id: 'draft', label: 'Draft Board', icon: 'List' },
-  { id: 'players', label: 'Players', icon: 'PersonStanding' }
+  { id: 'draft', label: 'Draft Board', icon: 'List' }
 ];
