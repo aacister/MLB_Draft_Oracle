@@ -1,0 +1,30 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Docker Hub...
+      - echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
+      - IMAGE_URI=$DOCKER_USERNAME/mlb-draft-oracle-backend
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - cd mlb_draft_oracle
+      - docker build -t $IMAGE_URI:latest .
+      - docker tag $IMAGE_URI:latest $IMAGE_URI:$IMAGE_TAG
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images...
+      - docker push $IMAGE_URI:latest
+      - docker push $IMAGE_URI:$IMAGE_TAG
+      - echo Writing image definitions file...
+      - cd ..
+      - printf '[{"name":"mlb-draft-oracle-fastapi-app","imageUri":"%s"}]' $IMAGE_URI:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files:
+    - Dockerrun.aws.json
+    - imagedefinitions.json

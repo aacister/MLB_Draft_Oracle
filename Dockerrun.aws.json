@@ -3,7 +3,7 @@
   "containerDefinitions": [
     {
       "name": "mlb-draft-oracle-fastapi-app",
-      "image": "mlb-draft-oracle:latest",
+      "image": "aacister/mlb-draft-oracle-backend:latest",
       "essential": true,
       "memory": 512,
       "portMappings": [
