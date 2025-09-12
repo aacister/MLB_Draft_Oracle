@@ -1,0 +1,70 @@
+{
+  "AWSEBDockerrunVersion": 2,
+  "containerDefinitions": [
+    {
+      "name": "mlb-draft-oracle-fastapi-app",
+      "image": "mlb-draft-oracle:latest",
+      "essential": true,
+      "memory": 512,
+      "portMappings": [
+        {
+          "hostPort": 8080,
+          "containerPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "BRAVE_API_KEY",
+          "value": "${BRAVE_API_KEY}"
+        },
+        {
+          "name": "OPENAI_API_KEY", 
+          "value": "${OPENAI_API_KEY}"
+        },
+        {
+          "name": "DB_URL",
+          "value": "${DB_URL}"
+        },
+        {
+          "name": "DEPLOYMENT_ENVIRONMENT",
+          "value": "${DEPLOYMENT_ENVIRONMENT}"
+        }
+      ],
+      "mountPoints": [
+        {
+          "sourceVolume": "docker-sock",
+          "containerPath": "/var/run/docker.sock",
+          "readOnly": false
+        },
+        {
+          "sourceVolume": "mcp-servers",
+          "containerPath": "/app/mcp_servers",
+          "readOnly": false
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/aws/elasticbeanstalk/mlb-draft-oracle",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "mlb-draft-oracle"
+        }
+      }
+    }
+  ],
+  "volumes": [
+    {
+      "name": "docker-sock",
+      "host": {
+        "sourcePath": "/var/run/docker.sock"
+      }
+    },
+    {
+      "name": "mcp-servers",
+      "host": {
+        "sourcePath": "/tmp/mcp_servers"
+      }
+    }
+  ]
+}

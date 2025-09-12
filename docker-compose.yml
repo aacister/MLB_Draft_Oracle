@@ -1,0 +1,22 @@
+volumes:
+  mcp_servers_volume:
+
+
+services:
+  mlb-draft-oracle-fastapi-app:
+    build:
+      context: ./mlb_draft_oracle
+      dockerfile: Dockerfile
+    image: mlb-draft-oracle:latest
+    container_name: mlb-draft-oracle
+    environment:
+      - BRAVE_API_KEY=${BRAVE_API_KEY}  
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - DB_URL=${DB_URL}
+      - DEPLOYMENT_ENVIRONMENT=${DEPLOYMENT_ENVIRONMENT}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./mlb_draft_oracle/mcp_servers:/app/mcp_servers
+    ports:
+      - "8080:8080"  
+    

@@ -1,0 +1,17 @@
+fastapi==0.116.1
+pydantic
+python-dotenv==1.1.1
+Requests==2.32.5
+SQLAlchemy==2.0.43
+uvicorn
+griffe
+mcp
+requests
+types-requests
+typing_extensions==4.15.0
+openai==1.85.0
+openai-agents==0.0.17
+mlb_statsapi==1.9.0
+psycopg2-binary
+uv
+
