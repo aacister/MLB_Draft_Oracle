@@ -1,7 +1,3 @@
-volumes:
-  mcp_servers_volume:
-
-
 services:
   mlb-draft-oracle-fastapi-app:
     build:

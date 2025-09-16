@@ -12,7 +12,7 @@ brave_env = {"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")}
 working_directory = os.getcwd()
 print(f"Working directory: {working_directory}")
 #server_directory = f"{working_directory}\\mcp_servers"
-server_directory = "/app/mcp_servers"
+#server_directory = "/app/mcp_servers"
 #brave_search_directory = f"{working_directory}\\ai\\server\\brave_search\\brave-search-mcp\\src"
 
 
