@@ -1,30 +1,20 @@
 {
-  "AWSEBDockerrunVersion": 3,
-  "services": {
-    "mlb-draft-oracle-fastapi-app": {
-      "image": "aacister/mlb-draft-oracle:latest",
-      "container_name": "mlb-draft-oracle",
-      "ports": [
-        "8080:8080"
-      ],
-      "environment": [
-        "BRAVE_API_KEY=${BRAVE_API_KEY}",
-        "OPENAI_API_KEY=${OPENAI_API_KEY}",
-        "DB_URL=${DB_URL}",
-        "DEPLOYMENT_ENVIRONMENT=${DEPLOYMENT_ENVIRONMENT}"
-      ],
-      "volumes": [
-        "/var/run/docker.sock:/var/run/docker.sock"
-      ],
-      "logging": {
-        "driver": "awslogs",
-        "options": {
-          "awslogs-group": "/aws/elasticbeanstalk/mlb-draft-oracle",
-          "awslogs-region": "us-east-1",
-          "awslogs-stream-prefix": "mlb-draft-oracle"
-        }
-      },
-      "mem_limit": "512m"
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "aacister/mlb-draft-oracle:1.0",
+    "Update": "true"
+  },
+  "Ports": [
+    {
+      "ContainerPort": 8080
     }
+  ],
+  "Logging": "/var/log/web.stdout.log",
+  "Environment": {
+    "PYTHONUNBUFFERED": "1",
+    "PORT": "8080",
+    "BRAVE_API_KEY": "${BRAVE_API_KEY}",
+    "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+    "DB_URL": "${DB_URL}"
   }
 }
