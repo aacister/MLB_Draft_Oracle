@@ -2,7 +2,7 @@
   "AWSEBDockerrunVersion": 3,
   "services": {
     "mlb-draft-oracle-fastapi-app": {
-      "image": "aacister/mlb-draft-oracle-backend:latest",
+      "image": "aacister/mlb-draft-oracle:latest",
       "container_name": "mlb-draft-oracle",
       "ports": [
         "8080:8080"

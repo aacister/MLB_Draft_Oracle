@@ -3,30 +3,46 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo Logging in to Docker Hub...
-      - echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
-      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:0:7}
-      - IMAGE_URI=$DOCKER_USERNAME/mlb-draft-oracle-backend
+      - echo Logging into Amazon ECR...
+      - aws --version
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - REPOSITORY_URI=<AWS_ACCOUNT_ID>.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/mlb-draft-oracle
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+
   build:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - cd mlb_draft_oracle
-      - docker build -t $IMAGE_URI:latest .
-      - docker tag $IMAGE_URI:latest $IMAGE_URI:$IMAGE_TAG
+      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+      - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
+
   post_build:
     commands:
       - echo Build completed on `date`
       - echo Pushing the Docker images...
-      - docker push $IMAGE_URI:latest
-      - docker push $IMAGE_URI:$IMAGE_TAG
-      - echo Creating Elastic Beanstalk deployment package...
-      - cd ..
-      # Update Dockerrun.aws.json with the new image URI
-      - sed -i "s|IMAGE_URI_PLACEHOLDER|$IMAGE_URI:$IMAGE_TAG|g" Dockerrun.aws.json
-
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - docker push $REPOSITORY_URI:latest
+      - echo Writing Dockerrun.aws.json file...
+      - |
+        cat > Dockerrun.aws.json <<EOF
+        {
+          "AWSEBDockerrunVersion": 2,
+          "containerDefinitions": [
+            {
+              "name": "app",
+              "image": "$REPOSITORY_URI:$IMAGE_TAG",
+              "essential": true,
+              "memory": 512,
+              "portMappings": [
+                {
+                  "hostPort": 80,
+                  "containerPort": 3000
+                }
+              ]
+            }
+          ]
+        }
+        EOF
 artifacts:
   files:
     - Dockerrun.aws.json
-    - '**/*'
-  name: mlb-draft-oracle-$(date +%Y-%m-%d-%H-%M-%S)
