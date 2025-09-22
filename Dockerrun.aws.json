@@ -1,7 +1,7 @@
 {
   "AWSEBDockerrunVersion": "1",
   "Image": {
-    "Name": "aacister/mlb-draft-oracle:1.0",
+    "Name": "aacister/mlb-draft-oracle:latest",
     "Update": "true"
   },
   "Ports": [
