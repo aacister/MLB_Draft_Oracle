@@ -1,20 +1,12 @@
 {
-  "AWSEBDockerrunVersion": "1",
+  "AWSEBDockerrunVersion": 1,
   "Image": {
-    "Name": "aacister/mlb-draft-oracle:latest",
+    "Name": "425865275846.dkr.ecr.us-east-2.amazonaws.com/mlb-draft-oracle:latest",
     "Update": "true"
   },
   "Ports": [
     {
-      "ContainerPort": 8080
+      "ContainerPort": "3000"
     }
-  ],
-  "Logging": "/var/log/web.stdout.log",
-  "Environment": {
-    "PYTHONUNBUFFERED": "1",
-    "PORT": "8080",
-    "BRAVE_API_KEY": "${BRAVE_API_KEY}",
-    "OPENAI_API_KEY": "${OPENAI_API_KEY}",
-    "DB_URL": "${DB_URL}"
-  }
+  ]
 }

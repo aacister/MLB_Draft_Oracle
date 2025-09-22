@@ -1,48 +1,23 @@
-version: 0.2
+post_build:
+  commands:
+    - echo Build completed on `date`
+    - echo Pushing the Docker images...
+    - docker push $REPOSITORY_URI:$IMAGE_TAG
+    - docker push $REPOSITORY_URI:latest
+    - echo Writing Dockerrun.aws.json file...
+    - |
+      cat > Dockerrun.aws.json <<EOF
+      {
+        "AWSEBDockerrunVersion": 1,
+        "Image": {
+          "Name": "$REPOSITORY_URI:$IMAGE_TAG",
+          "Update": "true"
+        },
+        "Ports": [
+          {
+            "ContainerPort": "3000"
+          }
+        ]
+      }
+      EOF
 
-phases:
-  pre_build:
-    commands:
-      - echo Logging into Amazon ECR...
-      - aws --version
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
-      - REPOSITORY_URI=<AWS_ACCOUNT_ID>.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/mlb-draft-oracle
-      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-
-  build:
-    commands:
-      - echo Build started on `date`
-      - echo Building the Docker image...
-      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
-      - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
-
-  post_build:
-    commands:
-      - echo Build completed on `date`
-      - echo Pushing the Docker images...
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - docker push $REPOSITORY_URI:latest
-      - echo Writing Dockerrun.aws.json file...
-      - |
-        cat > Dockerrun.aws.json <<EOF
-        {
-          "AWSEBDockerrunVersion": 2,
-          "containerDefinitions": [
-            {
-              "name": "app",
-              "image": "$REPOSITORY_URI:$IMAGE_TAG",
-              "essential": true,
-              "memory": 512,
-              "portMappings": [
-                {
-                  "hostPort": 80,
-                  "containerPort": 3000
-                }
-              ]
-            }
-          ]
-        }
-        EOF
-artifacts:
-  files:
-    - Dockerrun.aws.json
