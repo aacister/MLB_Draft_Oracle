@@ -1,8 +1,8 @@
 services:
   mlb-draft-oracle-fastapi-app:
     build:
-      context: ./mlb_draft_oracle
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./Dockerfile
     image: mlb-draft-oracle:latest
     container_name: mlb-draft-oracle
     environment:
@@ -12,7 +12,7 @@ services:
       - DEPLOYMENT_ENVIRONMENT=${DEPLOYMENT_ENVIRONMENT}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./mlb_draft_oracle/mcp_servers:/app/mcp_servers
+      - ./mcp_servers:/app/mcp_servers
     ports:
-      - "8080:8080"  
+      - "8000:8000"  
     
