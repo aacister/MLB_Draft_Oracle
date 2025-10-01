@@ -1,1 +1,0 @@
-web: gunicorn --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind :8000 api.main:app
