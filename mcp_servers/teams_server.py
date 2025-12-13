@@ -1,5 +1,5 @@
 from mcp.server.fastmcp import FastMCP
-from models.teams import Team
+from backend.models.teams import Team
 from typing import Optional
 import sys
 import os

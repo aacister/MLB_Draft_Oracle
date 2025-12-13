@@ -3,8 +3,11 @@ from fastapi import FastAPI, Depends
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from api import draft, player_pool, players, teams, draft_history
+from backend.api import draft, player_pool, players, teams, draft_history
 import os
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
 
 app = FastAPI()
 

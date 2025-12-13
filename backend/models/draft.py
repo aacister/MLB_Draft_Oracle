@@ -4,27 +4,28 @@ import traceback
 from typing import List, Optional, Dict, Tuple, Any
 import json
 import logging
-from data.sqlite.database import write_draft, read_draft
-from data.postgresql.main import write_postgres_draft, read_postgres_draft
-from models.players import Player
-from models.teams import Team
-from models.draft_history import DraftHistory
-from models.draft_teams import DraftTeams
-from models.draft_selection_data import DraftSelectionData
-from models.player_pool import PlayerPool
-from mcp_clients.draft_client import read_team_roster_resource, read_draft_history_resource
-from utils.util import NO_OF_TEAMS, NO_OF_ROUNDS
-from draft_agents.draft_name_generator.draft_name_generator_agent import get_draft_name_generator
-from templates.templates import draft_name_generator_message
+from backend.data.sqlite.database import write_draft, read_draft
+#from backend.data.postgresql.main import write_postgres_draft, read_postgres_draft
+from backend.models.players import Player
+from backend.models.teams import Team
+from backend.models.draft_history import DraftHistory
+from backend.models.draft_teams import DraftTeams
+from backend.models.draft_selection_data import DraftSelectionData
+from backend.models.player_pool import PlayerPool
+from backend.mcp_clients.draft_client import read_team_roster_resource, read_draft_history_resource
+from backend.utils.util import NO_OF_TEAMS, NO_OF_ROUNDS
+from backend.draft_agents.draft_name_generator.draft_name_generator_agent import get_draft_name_generator
+from backend.templates.templates import draft_name_generator_message
 from agents import Runner
 import uuid
 import math
 import os
 
-if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
-    use_local_db = True
-else: 
-    use_local_db = False
+#if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
+#    use_local_db = True
+#else: 
+#    use_local_db = False
+use_local_db = True
 
 class Draft(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
@@ -68,10 +69,10 @@ class Draft(BaseModel):
 
         import ast
         import json
-        if use_local_db:
-            fields = read_draft(id.lower())
-        else:
-            fields = read_postgres_draft(id.lower())
+    #    if use_local_db:
+        fields = read_draft(id.lower())
+    #    else:
+    #        fields = read_postgres_draft(id.lower())
         if not fields:
 
             teams = await DraftTeams.get(id.lower(), NO_OF_TEAMS)
@@ -81,15 +82,14 @@ class Draft(BaseModel):
                 "name": draft_name,
                 "num_rounds": NO_OF_ROUNDS,
                 "player_pool": player_pool.model_dump(by_alias=True, mode="json"),  
-                "teams": teams.model_dump(by_alias=True, mode="json"),
                 "current_round": 1,
                 "current_pick": 1,
                 "is_complete": False
             }
-            if use_local_db:
-                write_draft(id.lower(), fields)
-            else:
-                write_postgres_draft(id.lower(), fields)
+         #   if use_local_db:
+            write_draft(id.lower(), fields)
+    #        else:
+    #            write_postgres_draft(id.lower(), fields)
             await DraftHistory.get(id.lower())
         return cls(**fields)
 
@@ -123,10 +123,10 @@ class Draft(BaseModel):
     
     def save(self):
         data = self.model_dump(by_alias=True)
-        if use_local_db:
-            write_draft(self.id.lower(), data)
-        else:
-            write_postgres_draft(self.id.lower(), data)
+        #if use_local_db:
+        write_draft(self.id.lower(), data)
+    #    else:
+    #        write_postgres_draft(self.id.lower(), data)
 
     def report(self) -> str:
         """ Return a json string representing the draft.  """
@@ -204,7 +204,7 @@ class Draft(BaseModel):
         
         # Print draft history
         import json
-        from models.draft_history import DraftHistory
+        from backend.models.draft_history import DraftHistory
         history_data = await read_draft_history_resource(self.id.lower())
         if isinstance(history_data, str):
             history_dict = json.loads(history_data)

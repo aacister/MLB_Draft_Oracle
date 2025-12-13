@@ -57,3 +57,30 @@ Thumbs.db
 .pyre/
 .pytype/
 
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate.d/
+*.tfvars
+!terraform.tfvars
+!prod.tfvars
+
+# Lambda packages
+lambda-deployment.zip
+lambda-package/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Node
+node_modules/
+out/
+
+
+# AWS
+.aws

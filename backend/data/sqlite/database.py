@@ -3,8 +3,8 @@ import json
 from datetime import datetime
 import os
 
-DB = "data/mlbdraftoracle.db"
-
+#DB = "backend/data/mlbdraftoracle.db"
+DB = "/app/sqlite-data/mlbdraftoracle.db" 
 '''
 if os.path.exists(file_path):
     try:
@@ -14,16 +14,16 @@ if os.path.exists(file_path):
 else:
     print(f"File '{file_path}' does not exist")    
 '''
-if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
-    with sqlite3.connect(DB) as conn:
-        cursor = conn.cursor()
-        cursor.execute('CREATE TABLE IF NOT EXISTS teams (name TEXT PRIMARY KEY, data TEXT)')
-        cursor.execute('CREATE TABLE IF NOT EXISTS draft (id TEXT PRIMARY KEY, data TEXT)')
-        cursor.execute('CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, data TEXT)')
-        cursor.execute('CREATE TABLE IF NOT EXISTS player_pool (id TEXT PRIMARY KEY, data TEXT)')
-        cursor.execute('CREATE TABLE IF NOT EXISTS draft_teams (id TEXT PRIMARY KEY, data TEXT)')
-        cursor.execute('CREATE TABLE IF NOT EXISTS draft_history (id TEXT PRIMARY KEY, data TEXT)')
-        conn.commit()
+#if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
+with sqlite3.connect(DB) as conn:
+    cursor = conn.cursor()
+    cursor.execute('CREATE TABLE IF NOT EXISTS teams (name TEXT PRIMARY KEY, data TEXT)')        
+    cursor.execute('CREATE TABLE IF NOT EXISTS draft (id TEXT PRIMARY KEY, data TEXT)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS players (id TEXT PRIMARY KEY, data TEXT)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS player_pool (id TEXT PRIMARY KEY, data TEXT)')        
+    cursor.execute('CREATE TABLE IF NOT EXISTS draft_teams (id TEXT PRIMARY KEY, data TEXT)')
+    cursor.execute('CREATE TABLE IF NOT EXISTS draft_history (id TEXT PRIMARY KEY, data TEXT)')
+    conn.commit()
 
 
 def write_team(name, team_dict):

@@ -1,6 +1,6 @@
 from agents import Agent
-from templates.templates import team_name_generator_instructions
-from draft_agents.team_name_generator.team_name_data import TeamNameData
+from backend.templates.templates import team_name_generator_instructions
+from backend.draft_agents.team_name_generator.team_name_data import TeamNameData
 
 async def get_team_name_generator(num_of_teams: int) -> Agent:
     team_name_generator_agent = Agent(

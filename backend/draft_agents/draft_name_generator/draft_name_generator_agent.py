@@ -1,5 +1,5 @@
 from agents import Agent
-from templates.templates import draft_name_generator_instructions
+from backend.templates.templates import draft_name_generator_instructions
 
 async def get_draft_name_generator() -> Agent:
     draft_name_generator_agent = Agent(

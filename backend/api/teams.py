@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 from typing import List
 from pydantic import BaseModel as PydanticBaseModel
-from models.draft import Draft
-from models.teams import Team
+from backend.models.draft import Draft
+from backend.models.teams import Team
 from fastapi import APIRouter
 import os
 

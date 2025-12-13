@@ -1,5 +1,5 @@
 from agents import Agent, Tool
-from templates.templates import researcher_instructions,  research_tool
+from backend.templates.templates import researcher_instructions,  research_tool
 
 async def get_researcher(mcp_servers) -> Agent:
     researcher = Agent(

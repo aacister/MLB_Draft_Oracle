@@ -1,4 +1,4 @@
-from models.players import Player
+from backend.models.players import Player
 from pydantic import BaseModel, Field
 from typing import Optional
 

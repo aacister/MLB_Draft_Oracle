@@ -1,25 +1,26 @@
 from typing import Dict, List, Optional
 import json
 from pydantic import BaseModel, Field
-from utils.util import Position, NO_OF_TEAMS, NO_OF_ROUNDS
-from models.players import Player
-from data.sqlite.database import write_team, read_team
-from data.postgresql.main import write_postgres_team, read_postgres_team
+from backend.utils.util import Position, NO_OF_TEAMS, NO_OF_ROUNDS
+from backend.models.players import Player
+from backend.data.sqlite.database import write_team, read_team
+#from backend.data.postgresql.main import write_postgres_team, read_postgres_team
 from agents import Agent,  Runner, trace
 from contextlib import AsyncExitStack
 from agents.mcp import MCPServerStdio, MCPServerStreamableHttp
-from config.mcp_params import drafter_mcp_server_params, researcher_mcp_server_params
-from templates.templates import  team_instructions,  team_message, team_input, drafter_instructions, researcher_instructions, drafter_agent_instructions, researcher_agent_instructions
-from mcp_clients.draft_client import get_draft_tools, read_team_roster_resource, read_draft_player_pool_available_resource
-from draft_agents.research_agents.researcher_tool import get_researcher_tool, get_researcher
+from backend.config.mcp_params import drafter_mcp_server_params, researcher_mcp_server_params
+from backend.templates.templates import  team_instructions,  team_message, team_input, drafter_instructions, researcher_instructions, drafter_agent_instructions, researcher_agent_instructions
+from backend.mcp_clients.draft_client import get_draft_tools, read_team_roster_resource, read_draft_player_pool_available_resource
+from backend.draft_agents.research_agents.researcher_tool import get_researcher_tool, get_researcher
 import math
 import os
 
 MAX_TURNS = 15
-if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
-    use_local_db = True
-else: 
-    use_local_db = False
+#if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
+#    use_local_db = True
+#else: 
+#    use_local_db = False
+use_local_db = True
 
 class TeamContext(BaseModel):
     draft_id: str
@@ -54,10 +55,10 @@ class Team(BaseModel):
 
     @classmethod
     def get(cls, name: str):
-        if use_local_db:
-            fields = read_team(name.lower())
-        else: 
-            fields = read_postgres_team(name.lower())
+    #    if use_local_db:
+        fields = read_team(name.lower())
+    #    else: 
+    #        fields = read_postgres_team(name.lower())
         if not fields:
             fields = {
                 "name": name.lower(),
@@ -65,10 +66,10 @@ class Team(BaseModel):
                 "roster": {},
                 "drafted_players": []
             }
-            if use_local_db:
-                write_team(name, fields)
-            else:
-                write_postgres_team(name, fields)
+            #if use_local_db:
+            write_team(name, fields)
+            #else:
+    #            write_postgres_team(name, fields)
         return cls.from_dict(fields)
 
     def get_needed_positions(self) -> set:
@@ -78,10 +79,10 @@ class Team(BaseModel):
         return self.strategy
     
     def save(self):
-        if use_local_db:
-            write_team(self.name.lower(), self.to_dict())
-        else:
-            write_postgres_team(self.name.lower(), self.to_dict())
+        #if use_local_db:
+        write_team(self.name.lower(), self.to_dict())
+        #else:
+    #        write_postgres_team(self.name.lower(), self.to_dict())
 
     
     def get_roster(self) -> Dict[str, Optional[Player]]:

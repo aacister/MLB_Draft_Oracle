@@ -4,12 +4,12 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-from models.draft import Draft
-from models.teams import Team
-from models.draft_history import DraftHistory
-from models.draft_selection_data import DraftSelectionData
-from models.player_pool import PlayerPool
-from templates.templates import drafter_instructions
+from backend.models.draft import Draft
+from backend.models.teams import Team
+from backend.models.draft_history import DraftHistory
+from backend.models.draft_selection_data import DraftSelectionData
+from backend.models.player_pool import PlayerPool
+from backend.templates.templates import drafter_instructions
 from mcp.server.fastmcp import FastMCP
 from typing import List
 
@@ -17,7 +17,7 @@ from typing import List
 #db_url = os.getenv("DB_URL")
 #print(f"{db_url}") 
 db_url = "postgresql://rootuser:RogerFedererNumber1@mlb-draft-oracle-database.cn46mqoccdqx.us-east-2.rds.amazonaws.com:5432/postgres"
-os.environ["DEPLOYMENT_ENVIRONMENT"] = "PROD"
+os.environ["DEPLOYMENT_ENVIRONMENT"] = "DEV"
 
 try:
     

@@ -1,22 +1,23 @@
 from fastapi import HTTPException
 from pydantic import BaseModel as PydanticBaseModel
-from models.draft import Draft
-from models.draft_history import DraftHistory
-from models.player_pool import PlayerPool
-from data.sqlite.database import read_drafts
-from data.postgresql.main import read_postgres_drafts
+from backend.models.draft import Draft
+from backend.models.draft_history import DraftHistory
+from backend.models.player_pool import PlayerPool
+from backend.data.sqlite.database import read_drafts
+#from backend.data.postgresql.main import read_postgres_drafts
 import logging
 from typing import List, Dict, Optional
-from models.draft_teams import DraftTeams
+from backend.models.draft_teams import DraftTeams
 import json
 from fastapi import APIRouter
 import os
 
 api_url = os.getenv("API_URL")
-if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
-    use_local_db = True
-else: 
-    use_local_db = False
+#if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
+#    use_local_db = True
+#else: 
+#    use_local_db = False
+use_local_db = True
 
 router = APIRouter()
 
@@ -300,10 +301,8 @@ async def select_player(draft_id: str, team_name: str, round: int, pick: int):
 
 @router.get("/drafts", response_model=List[DraftsResponse])
 async def get_drafts():
-    if use_local_db:
-        drafts = read_drafts()
-    else:
-         drafts = read_postgres_drafts()
+  #  if use_local_db:
+    drafts = read_drafts()
     if not drafts:
         raise HTTPException(status_code=404, detail="No drafts found")
     

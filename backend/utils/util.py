@@ -1,7 +1,7 @@
 from enum import Enum
 from pydantic import GetCoreSchemaHandler
 from pydantic_core import core_schema
-from templates.strategies import early_ace_strategy, balanced_strategy, power_hitting_focus_strategy, speed_strategy, hitters_first_strategy, pitching_heavy_strategy
+from backend.templates.strategies import early_ace_strategy, balanced_strategy, power_hitting_focus_strategy, speed_strategy, hitters_first_strategy, pitching_heavy_strategy
 
 class Position(Enum):
     FIRST_BASE = "1B"

@@ -2,8 +2,8 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import asyncio
-from models.draft import Draft
-from models.player_pool import PlayerPool
+from backend.models.draft import Draft
+from backend.models.player_pool import PlayerPool
 
 async def main():
     draft = await Draft.get(id=None)

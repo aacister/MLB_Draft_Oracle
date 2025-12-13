@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from typing import List
 from pydantic import BaseModel as PydanticBaseModel
-from models.player_pool import PlayerPool
+from backend.models.player_pool import PlayerPool
 from fastapi import APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 import os
