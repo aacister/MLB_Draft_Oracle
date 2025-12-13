@@ -1,0 +1,103 @@
+import { API_BASE_URL } from '../constants/draftConstants';
+
+class DraftService {
+  async getDraft(draftId = null) {
+    const url = draftId 
+      ? `/v1/drafts/${draftId}`
+      : `/v1/draft`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': '*/*',
+        'Content-Type': 'application/json', 
+      },
+    });
+
+    if (!response.ok) {
+      console.log('Response Status:', response.status);
+      console.log('Response Headers:', response.headers);
+      console.log('Response Body:', await response.text()); // Debugging log
+      throw new Error(`Failed to fetch draft: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+
+
+  async getAllDrafts() {
+    const url = `/v1/drafts`;
+    
+    const response = await fetch(url, {
+
+      method: 'GET',
+      headers: {
+        'Accept': '*/*',
+        'Content-Type': 'application/json', 
+      },
+    });
+
+    if (!response.ok) {
+      console.log('Response Status:', response.status);
+      console.log('Response Headers:', response.headers);
+      console.log('Response Body:', await response.text()); // Debugging log
+      throw new Error(`Failed to fetch draft: ${response.statusText}`);
+    }
+    return await response.json();
+  }
+
+  async selectPlayer(draftId, teamName, round, pick) {
+    const url = `/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}/round/${round}/pick/${pick}/select-player`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to select player: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  async getDraftHistory(draftId) {
+    const url = `/v1/draft-history/${draftId}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch draft history: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  async getTeam(draftId, teamName) {
+    const url = `/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch team: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+}
+
+export default new DraftService();
