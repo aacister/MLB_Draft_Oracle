@@ -242,6 +242,7 @@ const DraftTracker = () => {
         creatingDraft={creatingDraft}
         draftStatus={draftStatus}
         playerPoolLoaded={!!playerPool}
+        isDraftRunning={runningDraftId !== null}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

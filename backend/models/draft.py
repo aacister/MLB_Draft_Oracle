@@ -5,7 +5,6 @@ from typing import List, Optional, Dict, Tuple, Any
 import json
 import logging
 from backend.data.sqlite.database import write_draft, read_draft
-#from backend.data.postgresql.main import write_postgres_draft, read_postgres_draft
 from backend.models.players import Player
 from backend.models.teams import Team
 from backend.models.draft_history import DraftHistory
@@ -16,16 +15,12 @@ from backend.mcp_clients.draft_client import read_team_roster_resource, read_dra
 from backend.utils.util import NO_OF_TEAMS, NO_OF_ROUNDS
 from backend.draft_agents.draft_name_generator.draft_name_generator_agent import get_draft_name_generator
 from backend.templates.templates import draft_name_generator_message
-from backend.data.memory import save_draft_state
+from backend.data.memory import save_draft_state, load_draft_state
 from agents import Runner
 import uuid
 import math
 import os
 
-#if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
-#    use_local_db = True
-#else: 
-#    use_local_db = False
 use_local_db = True
 
 class Draft(BaseModel):
@@ -38,7 +33,6 @@ class Draft(BaseModel):
     current_pick: int = Field(default=1, description="Current pick.")
     is_complete: bool = Field(default=False, description="Is draft complete")
 
-
     @classmethod
     def from_dict(cls, data):
         player_pool = data.get("player_pool")
@@ -49,9 +43,7 @@ class Draft(BaseModel):
         if isinstance(teams, dict):
             teams = DraftTeams(**teams)
         elif teams is None:
-            # If teams is None, we need to handle this
             print(f"Warning: teams is None in from_dict for draft {data.get('id')}")
-            # Don't create a Draft with None teams - this will cause errors
             raise ValueError("Cannot create Draft with None teams")
 
         return cls(
@@ -75,8 +67,13 @@ class Draft(BaseModel):
             draft_name = result.final_output        
 
         import ast
-        import json
-        fields = read_draft(id.lower())
+        
+        # First try to load from memory
+        fields = load_draft_state(id.lower())
+        
+        # If not in memory, try database
+        if not fields:
+            fields = read_draft(id.lower())
         
         if not fields:
             # Initialize teams first
@@ -88,12 +85,15 @@ class Draft(BaseModel):
                 "name": draft_name,
                 "num_rounds": NO_OF_ROUNDS,
                 "player_pool": player_pool.model_dump(by_alias=True, mode="json"),
-                "teams": teams.model_dump(by_alias=True, mode="json"),  # Add teams to fields
+                "teams": teams.model_dump(by_alias=True, mode="json"),
                 "current_round": 1,
                 "current_pick": 1,
                 "is_complete": False
             }
+            
+            # Save to both database and memory
             write_draft(id.lower(), fields)
+            save_draft_state(id.lower(), fields)
             await DraftHistory.get(id.lower())
         
         # Ensure teams is properly loaded from fields
@@ -107,49 +107,35 @@ class Draft(BaseModel):
                         fields['teams'] = DraftTeams(**teams_dict)
                 except Exception as e:
                     print(f"Error parsing teams from string: {e}")
-                    # If parsing fails, reinitialize teams
                     fields['teams'] = await DraftTeams.get(id.lower(), NO_OF_TEAMS)
             elif isinstance(fields['teams'], DraftTeams):
-                # Already a DraftTeams object, use as-is
                 pass
             else:
                 print(f"Unexpected teams type: {type(fields['teams'])}")
                 fields['teams'] = await DraftTeams.get(id.lower(), NO_OF_TEAMS)
         else:
-            # If teams not in fields or is None, initialize it
             print(f"Teams not found in fields or is None, initializing...")
             fields['teams'] = await DraftTeams.get(id.lower(), NO_OF_TEAMS)
         
-        # Final validation
         if not fields.get('teams'):
             raise ValueError(f"Failed to initialize teams for draft {id}")
         
         return cls(**fields)
 
- 
     def get_draft_order(self, round_num: int) -> List[Team]:
-        """
-        Get the draft order for a specific round.
-        Snake draft: odd rounds use normal order, even rounds reverse.
-        """
+        """Get the draft order for a specific round. Snake draft: odd rounds use normal order, even rounds reverse."""
         base_order = self.teams.teams
         if round_num % 2 == 0:
-            # Even rounds: reverse order (snake draft)
             return list(reversed(base_order))
-        # Odd rounds: normal order
         return base_order
 
-    # Also add a helper method to get team for a specific pick
     def get_team_for_pick(self, round_num: int, pick_num: int) -> Team:
-        """
-        Get the team that should draft at a specific pick number.
-        """
+        """Get the team that should draft at a specific pick number."""
         num_teams = len(self.teams.teams)
         picks_in_round = num_teams
         first_pick_of_round = ((round_num - 1) * picks_in_round) + 1
         pick_index_in_round = pick_num - first_pick_of_round
         
-        # Get the draft order for this round
         draft_order = self.get_draft_order(round_num)
         
         if pick_index_in_round < 0 or pick_index_in_round >= len(draft_order):
@@ -179,14 +165,24 @@ class Draft(BaseModel):
             raise ValueError("Player not found in player pool.")
     
     def save(self):
-        data = self.model_dump(by_alias=True)
-        #if use_local_db:
-        write_draft(self.id.lower(), data)
-    #    else:
-    #        write_postgres_draft(self.id.lower(), data)
+        """Save draft to both database and memory"""
+        try:
+            data = self.model_dump(by_alias=True)
+            write_draft(self.id.lower(), data)
+            save_draft_state(self.id.lower(), data)
+        except Exception as e:
+            logging.error(f"Error saving draft {self.id}: {e}", exc_info=True)
+            # Even if database save fails, try to save to memory
+            try:
+                data = self.model_dump(by_alias=True)
+                save_draft_state(self.id.lower(), data)
+                logging.info(f"Draft {self.id} saved to memory despite database error")
+            except Exception as mem_error:
+                logging.error(f"Failed to save draft to memory: {mem_error}", exc_info=True)
+                raise
 
     def report(self) -> str:
-        """ Return a json string representing the draft.  """
+        """Return a json string representing the draft."""
         data = self.model_dump(by_alias=True)
         return json.dumps(data, default=str)
     
@@ -198,28 +194,24 @@ class Draft(BaseModel):
             raise ValueError(f"Team {team.name} not found in {self.teams.teams}.")
         draft_team.roster[drafted_position_str] = player
         draft_team.drafted_players.append(player)
-        #self.teams.save()
 
     async def draft_player(self, team: Team, round: int, pick: int, selected_player: Player, rationale: str) -> DraftSelectionData:
         try:
-            #print(f"Team {team.name} drafting {selected_player.id}: {selected_player.name} ({selected_player.position} in round {round}.")
-            #draft_teams = DraftTeams.get(name=self.name, num_teams=len(self.teams))
             draft_team = next((t for t in self.teams.teams if t.name.lower() == team.name), None)
             needed_positions_set = draft_team.get_needed_positions()
             if not needed_positions_set:
                 raise Exception(f"Error: Roster is full for team: {team.name}. Needed positions: {needed_positions_set}")
 
             drafted_position = selected_player.position
-            #print(f"drafted_position: {drafted_position}")
 
             if drafted_position not in needed_positions_set:
                 print(f"Error: Position {drafted_position} already filled.")
                 raise Exception(f"Error: Position {drafted_position} already filled.")
             
-            #Add to team roster
+            # Add to team roster
             self.roster_player(team, selected_player)
 
-            # mark player as drafted in player pool
+            # Mark player as drafted in player pool
             players_in_pool = [player for player in self.player_pool.players if player.id == selected_player.id]
             if players_in_pool is None or not players_in_pool: 
                 raise Exception(f"Error: Selected player {selected_player.name} does not exist in player pool.")
@@ -227,7 +219,7 @@ class Draft(BaseModel):
             players_in_pool[0].mark_drafted()
             self.player_pool.save()
 
-            # update draft history
+            # Update draft history
             history = await DraftHistory.get(self.id.lower())
             history.update_draft_history(round, pick, selected_player, rationale)
 
@@ -237,42 +229,57 @@ class Draft(BaseModel):
             else:
                 self.current_pick += 1
                 math.ceil(self.current_pick/NO_OF_TEAMS)
-            #print(f"Team {team.name} drafted {selected_player.id}: {selected_player.name} ({selected_player.position}in round {round}.")
+            
+            # Save to both database and memory after each pick
             self.save()
-            # Save draft state to memory after each pick
-            save_draft_state(self.id, self.model_dump(by_alias=True))
             
             print(f"Team {team.name} drafted {selected_player.id}: {selected_player.name} ({selected_player.position} in round {round}.")
             return DraftSelectionData(reason=rationale, player_id=selected_player.id, player_name=selected_player.name)
     
         except Exception as e:
-            #traceback.print_exc() # Print the full stack trace
-            logging.error(f"An error occurred in draft_player: {e}", exc_info=True) # Log with stack trace
+            logging.error(f"An error occurred in draft_player: {e}", exc_info=True)
+            
+            # Save draft state to memory on error
+            try:
+                self.save()
+                logging.info(f"Draft state saved to memory after error")
+            except Exception as save_error:
+                logging.error(f"Failed to save draft state after error: {save_error}", exc_info=True)
+            
             print(f"An error occurred in draft_player: {e}")
-            #return f"Error: An error occurred in draft_player: {e}"
             raise
 
     async def run_draft(self) -> Tuple[Any, DraftHistory]:
-        for round_num in range(1, self.num_rounds + 1):
-            #print(f"\n=== Round {round_num} ===")
-            draft_order = self.get_draft_order(round_num)
-            for team in draft_order:
-                #print(f"Pick {self.current_pick}: {team.name} is drafting (Round: {self.current_round}, Pick: {self.current_pick})...")
-                await team.select_player(self, self.current_round, self.current_pick)
-                self.current_pick += 1   
-            self.current_round += 1
-        
-        # Print draft history
-        import json
-        from backend.models.draft_history import DraftHistory
-        history_data = await read_draft_history_resource(self.id.lower())
-        if isinstance(history_data, str):
-            history_dict = json.loads(history_data)
-        else:
-            history_dict = history_data
-        history = DraftHistory(**history_dict)
-        return self, history
-
+        try:
+            for round_num in range(1, self.num_rounds + 1):
+                draft_order = self.get_draft_order(round_num)
+                for team in draft_order:
+                    await team.select_player(self, self.current_round, self.current_pick)
+                    self.current_pick += 1   
+                self.current_round += 1
+            
+            # Print draft history
+            import json
+            from backend.models.draft_history import DraftHistory
+            history_data = await read_draft_history_resource(self.id.lower())
+            if isinstance(history_data, str):
+                history_dict = json.loads(history_data)
+            else:
+                history_dict = history_data
+            history = DraftHistory(**history_dict)
+            return self, history
+            
+        except Exception as e:
+            logging.error(f"Error in run_draft: {e}", exc_info=True)
+            
+            # Save draft state to memory on error
+            try:
+                self.save()
+                logging.info(f"Draft state saved to memory after run_draft error")
+            except Exception as save_error:
+                logging.error(f"Failed to save draft state after run_draft error: {save_error}", exc_info=True)
+            
+            raise
 
     async def run(self, player_pool_id: Optional[str]):
         try:
@@ -282,25 +289,32 @@ class Draft(BaseModel):
                     self.player_pool = await PlayerPool.get(id=player_pool_id.lower())
                 else:
                     self.player_pool = await PlayerPool.get(id=None)
+                
+                # Save after initializing player pool
                 self.save()
             
             draft, history = await self.run_draft()
+            
             # Print final rosters 
             print("\n=== Final Rosters ===")
             for team in draft.teams.teams:
                 print(f"\n{team.name} Roster:")
-                roster = await read_team_roster_resource(draft.id.lower(), team.name.lower() )
+                roster = await read_team_roster_resource(draft.id.lower(), team.name.lower())
                 print(roster)
             print(f"\n=== Draft History ===")
             print(history)
             return draft, history
+            
         except Exception as e:
-            traceback.print_exc() # Print the full stack trace
-            logging.error("An error occurred", exc_info=True) # Log with stack trace
+            traceback.print_exc()
+            logging.error("An error occurred in draft.run", exc_info=True)
+            
+            # Save draft state to memory on error
+            try:
+                self.save()
+                logging.info(f"Draft state saved to memory after draft.run error")
+            except Exception as save_error:
+                logging.error(f"Failed to save draft state after draft.run error: {save_error}", exc_info=True)
+            
             print(f"Error running MLB Draft Oracle simulation: {e}")
             raise
-
-
-    
-
-

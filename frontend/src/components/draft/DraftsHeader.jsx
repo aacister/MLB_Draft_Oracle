@@ -4,8 +4,16 @@ import CreateDraftButton from './CreateDraftButton';
 import DraftStatusTracker from './DraftStatusTracker';
 import AppNoteComponent from '../common/AppNote';
 
-const Header = ({ onRefresh, onCreateDraft, loading, creatingDraft, draftStatus, playerPoolLoaded }) => {
-  const isDraftRunning = draftStatus && !draftStatus.includes('complete') && !draftStatus.includes('Error') && !draftStatus.includes('stopped');
+const Header = ({ 
+  onRefresh, 
+  onCreateDraft, 
+  loading, 
+  creatingDraft, 
+  draftStatus, 
+  playerPoolLoaded,
+  isDraftRunning = false // New prop to indicate if any draft is running
+}) => {
+  const isStatusActive = draftStatus && !draftStatus.includes('complete') && !draftStatus.includes('Error') && !draftStatus.includes('stopped');
   
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -21,7 +29,7 @@ const Header = ({ onRefresh, onCreateDraft, loading, creatingDraft, draftStatus,
                     Player pool loaded
                   </div>
                 )}
-                {isDraftRunning && (
+                {isStatusActive && (
                   <div className="flex items-center text-xs text-blue-600 animate-pulse">
                     <AlertCircle className="w-3 h-3 mr-1" />
                     Draft in progress
@@ -40,6 +48,7 @@ const Header = ({ onRefresh, onCreateDraft, loading, creatingDraft, draftStatus,
             <CreateDraftButton
               onClick={onCreateDraft}
               loading={creatingDraft}
+              disabled={isDraftRunning}
             />
           </div>
         </div>
