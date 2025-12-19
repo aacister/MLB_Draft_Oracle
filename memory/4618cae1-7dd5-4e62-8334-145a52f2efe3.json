@@ -49,7 +49,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 666214,
@@ -95,7 +95,7 @@
           "whip": "1.05",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 650490,
@@ -118,7 +118,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 554430,
@@ -233,7 +233,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 669358,
@@ -1786,8 +1786,52 @@
         "strategy": "Draft a large number of high-quality pitchers early \nand rely on them to carry your team to victory.",
         "roster": {
           "C": null,
-          "1B": null,
-          "OF": null,
+          "1B": {
+            "id": 650490,
+            "name": "Yandy D\u00edaz",
+            "team": "Tampa Bay Rays",
+            "position": "1B",
+            "stats": {
+              "at_bats": 583,
+              "innings_pitched": "",
+              "r": 79,
+              "hr": 25,
+              "rbi": 83,
+              "sb": 0,
+              "avg": ".300",
+              "obp": ".366",
+              "slg": ".482",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          "OF": {
+            "id": 665742,
+            "name": "Juan Soto",
+            "team": "New York Mets",
+            "position": "OF",
+            "stats": {
+              "at_bats": 577,
+              "innings_pitched": "",
+              "r": 120,
+              "hr": 43,
+              "rbi": 105,
+              "sb": 0,
+              "avg": ".263",
+              "obp": ".396",
+              "slg": ".525",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
           "P": {
             "id": 554430,
             "name": "Zack Wheeler",
@@ -1835,6 +1879,52 @@
               "s": 0
             },
             "is_drafted": true
+          },
+          {
+            "id": 650490,
+            "name": "Yandy D\u00edaz",
+            "team": "Tampa Bay Rays",
+            "position": "1B",
+            "stats": {
+              "at_bats": 583,
+              "innings_pitched": "",
+              "r": 79,
+              "hr": 25,
+              "rbi": 83,
+              "sb": 0,
+              "avg": ".300",
+              "obp": ".366",
+              "slg": ".482",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          {
+            "id": 665742,
+            "name": "Juan Soto",
+            "team": "New York Mets",
+            "position": "OF",
+            "stats": {
+              "at_bats": 577,
+              "innings_pitched": "",
+              "r": 120,
+              "hr": 43,
+              "rbi": 105,
+              "sb": 0,
+              "avg": ".263",
+              "obp": ".396",
+              "slg": ".525",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
           }
         ]
       },
@@ -1842,7 +1932,29 @@
         "name": "WhereMyPitchesAt",
         "strategy": "Target players with high home run (HR) and runs batted in (RBI) potential early in the draft, \npotentially sacrificing some speed or average.",
         "roster": {
-          "C": null,
+          "C": {
+            "id": 663728,
+            "name": "Cal Raleigh",
+            "team": "Seattle Mariners",
+            "position": "C",
+            "stats": {
+              "at_bats": 596,
+              "innings_pitched": "",
+              "r": 110,
+              "hr": 60,
+              "rbi": 125,
+              "sb": 0,
+              "avg": ".247",
+              "obp": ".359",
+              "slg": ".589",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
           "1B": {
             "id": 624413,
             "name": "Pete Alonso",
@@ -1889,7 +2001,29 @@
             },
             "is_drafted": true
           },
-          "P": null
+          "P": {
+            "id": 607074,
+            "name": "Carlos Rod\u00f3n",
+            "team": "New York Yankees",
+            "position": "P",
+            "stats": {
+              "at_bats": 0,
+              "innings_pitched": "195.1",
+              "r": 0,
+              "hr": 0,
+              "rbi": 0,
+              "sb": 0,
+              "avg": ".000",
+              "obp": ".000",
+              "slg": ".000",
+              "w": 18,
+              "k": 203,
+              "era": "3.09",
+              "whip": "1.05",
+              "s": 0
+            },
+            "is_drafted": true
+          }
         },
         "drafted_players": [
           {
@@ -1937,12 +2071,58 @@
               "s": 0
             },
             "is_drafted": true
+          },
+          {
+            "id": 663728,
+            "name": "Cal Raleigh",
+            "team": "Seattle Mariners",
+            "position": "C",
+            "stats": {
+              "at_bats": 596,
+              "innings_pitched": "",
+              "r": 110,
+              "hr": 60,
+              "rbi": 125,
+              "sb": 0,
+              "avg": ".247",
+              "obp": ".359",
+              "slg": ".589",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          {
+            "id": 607074,
+            "name": "Carlos Rod\u00f3n",
+            "team": "New York Yankees",
+            "position": "P",
+            "stats": {
+              "at_bats": 0,
+              "innings_pitched": "195.1",
+              "r": 0,
+              "hr": 0,
+              "rbi": 0,
+              "sb": 0,
+              "avg": ".000",
+              "obp": ".000",
+              "slg": ".000",
+              "w": 18,
+              "k": 203,
+              "era": "3.09",
+              "whip": "1.05",
+              "s": 0
+            },
+            "is_drafted": true
           }
         ]
       }
     ]
   },
   "current_round": 1,
-  "current_pick": 4,
+  "current_pick": 8,
   "is_complete": false
 }

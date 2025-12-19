@@ -10,7 +10,8 @@ const DraftCard = ({
   onStop, 
   isRunning = false,
   currentRound = null,
-  currentPick = null
+  currentPick = null,
+  disabled = false
 }) => {
   const handleClick = (e) => {
     if (e.target.closest('.action-button')) {
@@ -29,7 +30,8 @@ const DraftCard = ({
     onStop(draft.draft_id);
   };
 
-  const canResume = !draft.is_complete && !isRunning;
+  // Only show resume button if draft is incomplete, not running, and not disabled
+  const canResume = !draft.is_complete && !isRunning && !disabled;
   const canStop = isRunning;
 
   return (
