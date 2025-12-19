@@ -15,20 +15,15 @@ class DraftService {
     });
 
     if (!response.ok) {
-      console.log('Response Status:', response.status);
-      console.log('Response Headers:', response.headers);
-      console.log('Response Body:', await response.text()); // Debugging log
       throw new Error(`Failed to fetch draft: ${response.statusText}`);
     }
     return await response.json();
   }
 
-
   async getAllDrafts() {
     const url = `/v1/drafts`;
     
     const response = await fetch(url, {
-
       method: 'GET',
       headers: {
         'Accept': '*/*',
@@ -37,10 +32,7 @@ class DraftService {
     });
 
     if (!response.ok) {
-      console.log('Response Status:', response.status);
-      console.log('Response Headers:', response.headers);
-      console.log('Response Body:', await response.text()); // Debugging log
-      throw new Error(`Failed to fetch draft: ${response.statusText}`);
+      throw new Error(`Failed to fetch drafts: ${response.statusText}`);
     }
     return await response.json();
   }
@@ -58,6 +50,24 @@ class DraftService {
 
     if (!response.ok) {
       throw new Error(`Failed to select player: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  async resumeDraft(draftId) {
+    const url = `/v1/drafts/${draftId}/resume`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to resume draft: ${response.statusText}`);
     }
 
     return await response.json();

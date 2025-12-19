@@ -85,7 +85,11 @@ def read_player(id):
     
 
 def write_draft(id: str, data: dict) -> None:
-    data_json = json.dumps(data)
+    print(f"Writing draft for id: {id}")
+    print(f"Draft data keys: {data.keys()}")
+    print(f"Teams in draft data: {'teams' in data}")
+    
+    data_json = json.dumps(data, default=str)
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -94,6 +98,7 @@ def write_draft(id: str, data: dict) -> None:
             ON CONFLICT(id) DO UPDATE SET data=excluded.data
         ''', (id.lower(), data_json))
         conn.commit()
+    print(f"Successfully wrote draft for id: {id}")
 
 def read_draft(id: str) -> dict | None:
     with sqlite3.connect(DB) as conn:
@@ -115,6 +120,10 @@ def write_draft_teams(id, draft_teams_dict):
         draft_teams_dict = [team.model_dump(by_alias=True) for team in draft_teams_dict]
     elif hasattr(draft_teams_dict, 'model_dump'):
         draft_teams_dict = draft_teams_dict.model_dump(by_alias=True)
+    
+    print(f"Writing draft_teams for id: {id}")
+    print(f"Draft teams dict keys: {draft_teams_dict.keys() if isinstance(draft_teams_dict, dict) else 'not a dict'}")
+    
     json_data = json.dumps(draft_teams_dict, default=str)
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
@@ -124,13 +133,22 @@ def write_draft_teams(id, draft_teams_dict):
             ON CONFLICT(id) DO UPDATE SET data=excluded.data
         ''', (id.lower(), json_data))
         conn.commit()
+    print(f"Successfully wrote draft_teams for id: {id}")
 
 def read_draft_teams(id):
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
         cursor.execute('SELECT data FROM draft_teams WHERE id = ?', (id.lower(),))
         row = cursor.fetchone()
-        return json.loads(row[0]) if row else None
+        result = json.loads(row[0]) if row else None
+        if result:
+            print(f"Read draft_teams for id: {id}, has teams: {'teams' in result if isinstance(result, dict) else False}")
+        else:
+            print(f"No draft_teams found for id: {id}")
+        return result
+
+
+
     
 def write_draft_history(id: str, data: dict) -> None:
     data_json = json.dumps(data)
@@ -149,3 +167,22 @@ def read_draft_history(id: str) -> dict | None:
         cursor.execute('SELECT data FROM draft_history WHERE id = ?', (id.lower(),))
         row = cursor.fetchone()
         return json.loads(row[0]) if row else None
+
+def get_latest_player_pool() -> dict | None:
+    """Get the most recently created player pool"""
+    with sqlite3.connect(DB) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT id, data FROM player_pool ORDER BY rowid DESC LIMIT 1')
+        row = cursor.fetchone()
+        if row:
+            pool_data = json.loads(row[1])
+            return pool_data
+        return None
+
+def player_pool_exists() -> bool:
+    """Check if any player pool exists in database"""
+    with sqlite3.connect(DB) as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) FROM player_pool')
+        count = cursor.fetchone()[0]
+        return count > 0

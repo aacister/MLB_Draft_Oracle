@@ -1,10 +1,19 @@
-
 import React from 'react';
 import DraftCard from './DraftCard';
 import LoadingSpinner from '../common/LoadingSpinner';
 import EmptyState from '../common/EmptyState';
 
-const DraftsList = ({ drafts, selectedDraft, onDraftSelect, loading }) => {
+const DraftsList = ({ 
+  drafts, 
+  selectedDraft, 
+  onDraftSelect, 
+  onResume, 
+  onStop,
+  loading,
+  runningDraftId = null,
+  currentRound = null,
+  currentPick = null
+}) => {
   const renderContent = () => {
     if (loading && !drafts.length) {
       return <LoadingSpinner message="Loading drafts..." />;
@@ -29,6 +38,11 @@ const DraftsList = ({ drafts, selectedDraft, onDraftSelect, loading }) => {
             draft={draft}
             isSelected={selectedDraft === draft.draft_id}
             onClick={onDraftSelect}
+            onResume={onResume}
+            onStop={onStop}
+            isRunning={runningDraftId === draft.draft_id}
+            currentRound={runningDraftId === draft.draft_id ? currentRound : null}
+            currentPick={runningDraftId === draft.draft_id ? currentPick : null}
           />
         ))}
       </div>

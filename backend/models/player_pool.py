@@ -22,20 +22,29 @@ class PlayerPool(BaseModel):
 
     @classmethod
     async def get(cls, id: Optional[str]):
+        # First, try to get any existing player pool from database
         if id is None:
-            id=str(uuid.uuid4()).lower()
-    #    if use_local_db:
+            # Check if any player pool exists in the database
+            from backend.data.sqlite.database import get_latest_player_pool
+            existing_pool = get_latest_player_pool()
+            
+            if existing_pool:
+                print(f"Found existing player pool: {existing_pool['id']}")
+                return cls(**existing_pool)
+            
+            # No existing pool found, create new one
+            print("No existing player pool found, creating new one...")
+            id = str(uuid.uuid4()).lower()
+        
         fields = read_player_pool(id.lower())
-    #    else:
-    #        fields = read_postgres_player_pool(id.lower())
+        
         if not fields:
             player_pool = await initialize_player_pool(id=id.lower())
             fields = player_pool.model_dump(by_alias=True)
-    #    if use_local_db:
-        write_player_pool(id.lower(), fields)
-    #    else:
-    #        write_postgres_player_pool(id.lower(), fields)
+            write_player_pool(id.lower(), fields)
+        
         return cls(**fields)
+
     
     def get_undrafted_players_dict(self) -> List[dict[str, Any]]:
         

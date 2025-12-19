@@ -16,6 +16,7 @@ from backend.mcp_clients.draft_client import read_team_roster_resource, read_dra
 from backend.utils.util import NO_OF_TEAMS, NO_OF_ROUNDS
 from backend.draft_agents.draft_name_generator.draft_name_generator_agent import get_draft_name_generator
 from backend.templates.templates import draft_name_generator_message
+from backend.data.memory import save_draft_state
 from agents import Runner
 import uuid
 import math
@@ -40,12 +41,18 @@ class Draft(BaseModel):
 
     @classmethod
     def from_dict(cls, data):
-        player_pool = data["player_pool"]
+        player_pool = data.get("player_pool")
         if isinstance(player_pool, dict):
             player_pool = PlayerPool(**player_pool)
-        teams = data["teams"]
+        
+        teams = data.get("teams")
         if isinstance(teams, dict):
-            teams= DraftTeams(**teams)
+            teams = DraftTeams(**teams)
+        elif teams is None:
+            # If teams is None, we need to handle this
+            print(f"Warning: teams is None in from_dict for draft {data.get('id')}")
+            # Don't create a Draft with None teams - this will cause errors
+            raise ValueError("Cannot create Draft with None teams")
 
         return cls(
             id=data["id"],
@@ -53,9 +60,9 @@ class Draft(BaseModel):
             num_rounds=data["num_rounds"],
             player_pool=player_pool,
             teams=teams,
-            current_round=data["current_round"],
-            current_pick=data["current_pick"],
-            is_complete=data["is_complete"]
+            current_round=data.get("current_round", 1),
+            current_pick=data.get("current_pick", 1),
+            is_complete=data.get("is_complete", False)
         )
     
     @classmethod
@@ -69,36 +76,86 @@ class Draft(BaseModel):
 
         import ast
         import json
-    #    if use_local_db:
         fields = read_draft(id.lower())
-    #    else:
-    #        fields = read_postgres_draft(id.lower())
+        
         if not fields:
-
+            # Initialize teams first
             teams = await DraftTeams.get(id.lower(), NO_OF_TEAMS)
             player_pool = await PlayerPool.get(id=None)
+            
             fields = {
                 "id": id,
                 "name": draft_name,
                 "num_rounds": NO_OF_ROUNDS,
-                "player_pool": player_pool.model_dump(by_alias=True, mode="json"),  
+                "player_pool": player_pool.model_dump(by_alias=True, mode="json"),
+                "teams": teams.model_dump(by_alias=True, mode="json"),  # Add teams to fields
                 "current_round": 1,
                 "current_pick": 1,
                 "is_complete": False
             }
-         #   if use_local_db:
             write_draft(id.lower(), fields)
-    #        else:
-    #            write_postgres_draft(id.lower(), fields)
             await DraftHistory.get(id.lower())
+        
+        # Ensure teams is properly loaded from fields
+        if fields and 'teams' in fields and fields['teams'] is not None:
+            if isinstance(fields['teams'], dict):
+                fields['teams'] = DraftTeams(**fields['teams'])
+            elif isinstance(fields['teams'], str):
+                try:
+                    teams_dict = ast.literal_eval(fields['teams'])
+                    if isinstance(teams_dict, dict):
+                        fields['teams'] = DraftTeams(**teams_dict)
+                except Exception as e:
+                    print(f"Error parsing teams from string: {e}")
+                    # If parsing fails, reinitialize teams
+                    fields['teams'] = await DraftTeams.get(id.lower(), NO_OF_TEAMS)
+            elif isinstance(fields['teams'], DraftTeams):
+                # Already a DraftTeams object, use as-is
+                pass
+            else:
+                print(f"Unexpected teams type: {type(fields['teams'])}")
+                fields['teams'] = await DraftTeams.get(id.lower(), NO_OF_TEAMS)
+        else:
+            # If teams not in fields or is None, initialize it
+            print(f"Teams not found in fields or is None, initializing...")
+            fields['teams'] = await DraftTeams.get(id.lower(), NO_OF_TEAMS)
+        
+        # Final validation
+        if not fields.get('teams'):
+            raise ValueError(f"Failed to initialize teams for draft {id}")
+        
         return cls(**fields)
 
  
     def get_draft_order(self, round_num: int) -> List[Team]:
+        """
+        Get the draft order for a specific round.
+        Snake draft: odd rounds use normal order, even rounds reverse.
+        """
         base_order = self.teams.teams
         if round_num % 2 == 0:
+            # Even rounds: reverse order (snake draft)
             return list(reversed(base_order))
+        # Odd rounds: normal order
         return base_order
+
+    # Also add a helper method to get team for a specific pick
+    def get_team_for_pick(self, round_num: int, pick_num: int) -> Team:
+        """
+        Get the team that should draft at a specific pick number.
+        """
+        num_teams = len(self.teams.teams)
+        picks_in_round = num_teams
+        first_pick_of_round = ((round_num - 1) * picks_in_round) + 1
+        pick_index_in_round = pick_num - first_pick_of_round
+        
+        # Get the draft order for this round
+        draft_order = self.get_draft_order(round_num)
+        
+        if pick_index_in_round < 0 or pick_index_in_round >= len(draft_order):
+            raise ValueError(f"Invalid pick index {pick_index_in_round} for round {round_num}")
+        
+        return draft_order[pick_index_in_round]
     
     def get_undrafted_players(self) -> List[Player]:
         return [player for player in self.player_pool.players if player.is_drafted == False]
@@ -182,9 +239,12 @@ class Draft(BaseModel):
                 math.ceil(self.current_pick/NO_OF_TEAMS)
             #print(f"Team {team.name} drafted {selected_player.id}: {selected_player.name} ({selected_player.position}in round {round}.")
             self.save()
+            # Save draft state to memory after each pick
+            save_draft_state(self.id, self.model_dump(by_alias=True))
+            
             print(f"Team {team.name} drafted {selected_player.id}: {selected_player.name} ({selected_player.position} in round {round}.")
             return DraftSelectionData(reason=rationale, player_id=selected_player.id, player_name=selected_player.name)
-           # return "Completed. Latest details:\n" + self.report()
+    
         except Exception as e:
             #traceback.print_exc() # Print the full stack trace
             logging.error(f"An error occurred in draft_player: {e}", exc_info=True) # Log with stack trace

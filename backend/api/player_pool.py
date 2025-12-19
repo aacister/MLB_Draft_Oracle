@@ -2,6 +2,7 @@ from fastapi import HTTPException
 from typing import List
 from pydantic import BaseModel as PydanticBaseModel
 from backend.models.player_pool import PlayerPool
+from backend.data.sqlite.database import player_pool_exists, get_latest_player_pool
 from fastapi import APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 import os
@@ -63,3 +64,17 @@ async def get_player_pool():
             ) for player in player_pool.players
         ]
     )
+
+@router.get("/player-pool/check", response_model=dict)
+async def check_player_pool():
+    """Check if a player pool exists in the database"""
+    exists = player_pool_exists()
+    pool_data = None
+    
+    if exists:
+        pool_data = get_latest_player_pool()
+    
+    return {
+        "exists": exists,
+        "pool_id": pool_data.get('id') if pool_data else None
+    }
