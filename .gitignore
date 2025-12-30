@@ -64,6 +64,7 @@ Thumbs.db
 .terraform.lock.hcl
 terraform.tfstate.d/
 *.tfvars
+!*.tfvars.example
 # Note: terraform.tfvars files may contain secrets and should not be committed
 # Use terraform.tfvars.example files for templates instead
 

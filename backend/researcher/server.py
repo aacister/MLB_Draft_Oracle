@@ -16,6 +16,7 @@ logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 from context import get_agent_instructions, DEFAULT_RESEARCH_PROMPT
 from mcp_servers import create_playwright_mcp_server
 from tools import ingest_knowledge_base_document
+from backend.models.player_pool import PlayerPool
 
 # Load environment
 load_dotenv(override=True)
@@ -58,6 +59,12 @@ async def run_research_agent() -> str:
             result = await Runner.run(agent, input=query, max_turns=15)
 
     return result.final_output
+
+
+async def get_players_in_pool() -> str: 
+    player_pool = await PlayerPool.get(id=None)
+    players_in_pool = ','.join(player.name for player in player_pool.players)
+    return players_in_pool
 
 
 @app.get("/")
