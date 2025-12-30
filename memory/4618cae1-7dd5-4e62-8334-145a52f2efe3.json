@@ -555,7 +555,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 656427,
@@ -1785,7 +1785,29 @@
         "name": "BatterUpYourGame",
         "strategy": "Draft a large number of high-quality pitchers early \nand rely on them to carry your team to victory.",
         "roster": {
-          "C": null,
+          "C": {
+            "id": 680777,
+            "name": "Ryan Jeffers",
+            "team": "Minnesota Twins",
+            "position": "C",
+            "stats": {
+              "at_bats": 406,
+              "innings_pitched": "",
+              "r": 47,
+              "hr": 9,
+              "rbi": 47,
+              "sb": 0,
+              "avg": ".266",
+              "obp": ".356",
+              "slg": ".397",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
           "1B": {
             "id": 650490,
             "name": "Yandy D\u00edaz",
@@ -1918,6 +1940,29 @@
               "avg": ".263",
               "obp": ".396",
               "slg": ".525",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          {
+            "id": 680777,
+            "name": "Ryan Jeffers",
+            "team": "Minnesota Twins",
+            "position": "C",
+            "stats": {
+              "at_bats": 406,
+              "innings_pitched": "",
+              "r": 47,
+              "hr": 9,
+              "rbi": 47,
+              "sb": 0,
+              "avg": ".266",
+              "obp": ".356",
+              "slg": ".397",
               "w": 0,
               "k": 0,
               "era": "-,--",
@@ -2124,5 +2169,5 @@
   },
   "current_round": 1,
   "current_pick": 8,
-  "is_complete": false
+  "is_complete": true
 }
