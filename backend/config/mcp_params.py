@@ -5,7 +5,16 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 load_dotenv(override=True)
 brave_api_key = os.getenv("BRAVE_API_KEY")
-brave_env = {"BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")}
+
+# Validate that BRAVE_API_KEY is set
+if not brave_api_key:
+    raise ValueError(
+        "BRAVE_API_KEY environment variable is not set. "
+        "Please set it in your .env file or as an environment variable. "
+        "Get your API key from: https://api.search.brave.com/"
+    )
+
+brave_env = {"BRAVE_API_KEY": brave_api_key}
 
 working_directory = os.getcwd()
 print(f"Working directory: {working_directory}")

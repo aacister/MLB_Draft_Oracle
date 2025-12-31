@@ -1,12 +1,13 @@
 import os
 import logging
+import asyncio
 from datetime import datetime, UTC
 from typing import Optional
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from agents import Agent, Runner, trace
+from agents.mcp import MCPServerStdio
 #from agents.extensions.models.litellm_model import LitellmModel
 
 # Suppress LiteLLM warnings about optional dependencies
@@ -14,9 +15,8 @@ logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 
 # Import from our modules
 from context import get_agent_instructions, DEFAULT_RESEARCH_PROMPT
-from mcp_servers import create_playwright_mcp_server
+from mcp_servers import researcher_mcp_server_params
 from tools import ingest_knowledge_base_document
-from backend.models.player_pool import PlayerPool
 
 # Load environment
 load_dotenv(override=True)
@@ -47,24 +47,18 @@ async def run_research_agent() -> str:
 
     # Create and run the agent with MCP server
     with trace("Researcher"):
-        async with create_playwright_mcp_server(timeout_seconds=60) as playwright_mcp:
+        async with MCPServerStdio(params=researcher_mcp_server_params[0]) as mcp_server:
             agent = Agent(
                 name="MLBDraftOracle Researcher",
                 instructions=get_agent_instructions(),
                 model="gpt-4o-mini",
                 tools=[ingest_knowledge_base_document],
-                mcp_servers=[playwright_mcp],
+                mcp_servers=[mcp_server],
             )
 
             result = await Runner.run(agent, input=query, max_turns=15)
 
     return result.final_output
-
-
-async def get_players_in_pool() -> str: 
-    player_pool = await PlayerPool.get(id=None)
-    players_in_pool = ','.join(player.name for player in player_pool.players)
-    return players_in_pool
 
 
 @app.get("/")

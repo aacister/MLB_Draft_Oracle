@@ -129,10 +129,13 @@ Examples:
   uv run test_research.py
   
   # Research specific topic
-  uv run test_research.py "Tesla competitive advantages"
+  uv run test_research.py "Injury reports for 2025"
   
   # Research another topic
-  uv run test_research.py "Microsoft cloud revenue growth"
+  uv run test_research.py "Top pitchers of 2025"
+
+  # Research another topic
+  uv run test_research.py "Top hitters of 2025"
         """
     )
     parser.add_argument(

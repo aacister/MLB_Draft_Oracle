@@ -143,6 +143,7 @@ resource "aws_apprunner_service" "researcher" {
           OPENAI_API_KEY    = var.openai_api_key
           MLBDRAFTORACLE_API_ENDPOINT = var.mlbdraftoracle_api_endpoint
           MLBDRAFTORACLE_API_KEY      = var.mlbdraftoracle_api_key
+          BRAVE_API_KEY               = var.brave_api_key
         }
       }
       image_repository_type = "ECR"

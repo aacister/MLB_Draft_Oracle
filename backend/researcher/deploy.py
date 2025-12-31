@@ -172,7 +172,8 @@ def main():
                                 "RuntimeEnvironmentVariables": {
                                     "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY", ""),
                                     "MLBDRAFTORACLE_API_KEY": os.environ.get("MLBDRAFTORACLE_API_KEY", ""),
-                                    "MLBDRAFTORACLE_API_ENDPOINT": os.environ.get("MLBDRAFTORACLE_API_ENDPOINT", "")
+                                    "MLBDRAFTORACLE_API_ENDPOINT": os.environ.get("MLBDRAFTORACLE_API_ENDPOINT", ""),
+                                    "BRAVE_API_KEY": os.environ.get("BRAVE_API_KEY", "")
                                 }
                             },
                             "ImageRepositoryType": "ECR"

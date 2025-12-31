@@ -25,3 +25,9 @@ variable "scheduler_enabled" {
   type        = bool
   default     = false
 }
+
+variable "brave_api_key" {
+  description = "Brave Search API key for web search functionality"
+  type        = string
+  sensitive   = true
+}
