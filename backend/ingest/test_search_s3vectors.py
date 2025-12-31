@@ -51,7 +51,7 @@ def list_all_vectors():
     try:
         # S3 Vectors doesn't have a direct list operation, so we'll do a broad search
         # Search for a common term to get some results
-        test_embedding = get_embedding("company")
+        test_embedding = get_embedding("player")
         
         response = s3_vectors.query_vectors(
             vectorBucketName=VECTOR_BUCKET,
@@ -70,12 +70,6 @@ def list_all_vectors():
             text_preview = metadata.get('text', '')[:100] + '...' if len(metadata.get('text', '')) > 100 else metadata.get('text', '')
             
             print(f"{i}. Vector ID: {vector['key']}")
-            if metadata.get('ticker'):
-                print(f"   Ticker: {metadata['ticker']}")
-            if metadata.get('company_name'):
-                print(f"   Company: {metadata['company_name']}")
-            if metadata.get('sector'):
-                print(f"   Sector: {metadata['sector']}")
             print(f"   Text: {text_preview}")
             print()
             
@@ -107,10 +101,7 @@ def search_vectors(query_text, k=5):
         for vector in vectors:
             metadata = vector.get('metadata', {})
             distance = vector.get('distance', 0)
-            
             print(f"Score: {1 - distance:.3f}")  # Convert distance to similarity score
-            if metadata.get('company_name'):
-                print(f"Company: {metadata['company_name']} ({metadata.get('ticker', 'N/A')})")
             print(f"Text: {metadata.get('text', '')[:200]}...")
             print()
             
