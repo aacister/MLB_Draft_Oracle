@@ -136,13 +136,17 @@ def main():
     
     # Search for specific concepts
     search_queries = [
-        "electric vehicles and sustainable transportation",
-        "cloud computing and AWS services",
-        "artificial intelligence and GPU computing"
+        "player news",
+        "player injuries",
+        "top hitters of 2025",
+        "who is hot",
+        "top ERA pitchers of 2025",
+        "Players with fastest swing speed",
+        "Players with highest WAR"
     ]
     
     for query in search_queries:
-        search_vectors(query, k=3)
+        search_vectors(query, k=5)
     
     print("\n✨ S3 Vectors provides semantic search - notice how it finds")
     print("   conceptually related documents even with different wording!")
