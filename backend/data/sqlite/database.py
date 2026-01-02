@@ -8,8 +8,12 @@ import os
 
 logger = logging.getLogger(__name__)
 
-# Use centralized settings
-DB = settings.SQLITE_DB_PATH
+
+# Force /tmp in Lambda regardless of settings
+if os.path.exists("/var/task"):  # Lambda indicator
+    DB = "/tmp/mlbdraftoracle.db"
+else:
+    DB = settings.SQLITE_DB_PATH
 
 # Track if tables have been initialized
 _tables_initialized = False
@@ -64,15 +68,13 @@ def _upload_after_write():
 
 
 def write_team(name, team_dict):
-    
     _ensure_tables_initialized()
     json_data = json.dumps(team_dict)
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO teams (name, data)
+            INSERT OR REPLACE INTO teams (name, data)
             VALUES (?, ?)
-            ON CONFLICT(name) DO UPDATE SET data=excluded.data
         ''', (name.lower(), json_data))
         conn.commit()
     _upload_after_write()
@@ -89,16 +91,14 @@ def read_team(name):
 
 def write_player_pool(id, player_pool_dict):
     _ensure_tables_initialized()
-    # If passed a PlayerPool object, convert to dict
     if hasattr(player_pool_dict, 'model_dump'):
         player_pool_dict = player_pool_dict.model_dump(by_alias=True)
     json_data = json.dumps(player_pool_dict, default=str)
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO player_pool (id, data)
+            INSERT OR REPLACE INTO player_pool (id, data)
             VALUES (?, ?)
-            ON CONFLICT(id) DO UPDATE SET data=excluded.data
         ''', (id.lower(), json_data))
         conn.commit()
     _upload_after_write()
@@ -118,13 +118,14 @@ def write_player(id, player_dict):
     json_data = json.dumps(player_dict)
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
+        # Replace UPSERT with INSERT OR REPLACE
         cursor.execute('''
-            INSERT INTO players (id, data)
+            INSERT OR REPLACE INTO players (id, data)
             VALUES (?, ?)
-            ON CONFLICT(id) DO UPDATE SET data=excluded.data
         ''', (id, json_data))
         conn.commit()
     _upload_after_write()
+
 
 
 def read_player(id):
@@ -143,9 +144,8 @@ def write_draft(id: str, data: dict) -> None:
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO draft (id, data)
+            INSERT OR REPLACE INTO draft (id, data)
             VALUES (?, ?)
-            ON CONFLICT(id) DO UPDATE SET data=excluded.data
         ''', (id.lower(), data_json))
         conn.commit()
     logger.info(f"Successfully wrote draft for id: {id}")
@@ -172,7 +172,6 @@ def read_drafts() -> list[dict | None]:
 
 def write_draft_teams(id, draft_teams_dict):
     _ensure_tables_initialized()
-    # If passed a list of Team objects, convert each to dict
     if isinstance(draft_teams_dict, list) and draft_teams_dict and hasattr(draft_teams_dict[0], 'model_dump'):
         draft_teams_dict = [team.model_dump(by_alias=True) for team in draft_teams_dict]
     elif hasattr(draft_teams_dict, 'model_dump'):
@@ -183,9 +182,8 @@ def write_draft_teams(id, draft_teams_dict):
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO draft_teams (id, data)
+            INSERT OR REPLACE INTO draft_teams (id, data)
             VALUES (?, ?)
-            ON CONFLICT(id) DO UPDATE SET data=excluded.data
         ''', (id.lower(), json_data))
         conn.commit()
     logger.info(f"Successfully wrote draft_teams for id: {id}")
@@ -212,12 +210,12 @@ def write_draft_history(id: str, data: dict) -> None:
     with sqlite3.connect(DB) as conn:
         cursor = conn.cursor()
         cursor.execute('''
-            INSERT INTO draft_history (id, data)
+            INSERT OR REPLACE INTO draft_history (id, data)
             VALUES (?, ?)
-            ON CONFLICT(id) DO UPDATE SET data=excluded.data
         ''', (id.lower(), data_json))
         conn.commit()
     _upload_after_write()
+
 
 
 def read_draft_history(id: str) -> dict | None:
