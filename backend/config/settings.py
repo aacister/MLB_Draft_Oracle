@@ -11,6 +11,10 @@ class Settings:
     BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     
+    # S3 Configuration for SQLite persistence
+    S3_BUCKET = os.getenv("S3_DB_BUCKET", "mlbdraftoracle-sqlite-425865275846")
+    S3_DB_KEY = "mlbdraftoracle.db"
+    
     # Database paths based on environment
     if DEPLOYMENT_ENV == "LAMBDA":
         SQLITE_DB_PATH = "/tmp/mlbdraftoracle.db"

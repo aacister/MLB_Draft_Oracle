@@ -6,12 +6,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api import draft, player_pool, players, teams, draft_history
 import os
 from dotenv import load_dotenv, find_dotenv
+import logging
 
 load_dotenv(override=True, dotenv_path=find_dotenv())
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI()
 
-origins = ["*"]
+origins = [
+    "http://mlbdraftoracle-frontend-425865275846.s3-website.us-east-2.amazonaws.com",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "*"  # Keep wildcard as fallback
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,6 +27,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 
@@ -33,6 +43,12 @@ app.include_router(draft_history.router, prefix="/v1")
 def health_check():
     """Health check MLB Draft Oracle API"""
     return {"status": "healthy"}
+
+# Handle OPTIONS requests for CORS preflight
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    """Handle OPTIONS requests for CORS preflight"""
+    return {}
 
 if os.getenv("DEPLOYMENT_ENVIRONMENT") != "LAMBDA":
     static_path = Path("static")

@@ -1,6 +1,6 @@
 const getApiBaseUrl = () => {
-  //return 'https://0ikbgoqbk7.execute-api.us-east-2.amazonaws.com';
-  
+  return 'https://0ikbgoqbk7.execute-api.us-east-2.amazonaws.com';
+  /*
     // Check if we're in Lambda environment (deployed to AWS)
     const deploymentEnv = import.meta.env.VITE_DEPLOYMENT_ENVIRONMENT;
     
@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
     } else {
         return '';
     }
-      
+    */
 };
 
 export const API_BASE_URL = getApiBaseUrl();

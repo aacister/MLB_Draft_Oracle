@@ -900,7 +900,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 592450,
@@ -1613,7 +1613,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 665487,
@@ -1955,8 +1955,52 @@
             },
             "is_drafted": true
           },
-          "1B": null,
-          "OF": null,
+          "1B": {
+            "id": 572233,
+            "name": "Christian Walker",
+            "team": "Houston Astros",
+            "position": "1B",
+            "stats": {
+              "at_bats": 585,
+              "innings_pitched": "",
+              "r": 72,
+              "hr": 27,
+              "rbi": 88,
+              "sb": 0,
+              "avg": ".238",
+              "obp": ".297",
+              "slg": ".421",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          "OF": {
+            "id": 543807,
+            "name": "George Springer",
+            "team": "Toronto Blue Jays",
+            "position": "OF",
+            "stats": {
+              "at_bats": 498,
+              "innings_pitched": "",
+              "r": 106,
+              "hr": 32,
+              "rbi": 84,
+              "sb": 0,
+              "avg": ".309",
+              "obp": ".399",
+              "slg": ".560",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
           "P": {
             "id": 669373,
             "name": "Tarik Skubal",
@@ -2027,12 +2071,58 @@
               "s": 0
             },
             "is_drafted": true
+          },
+          {
+            "id": 572233,
+            "name": "Christian Walker",
+            "team": "Houston Astros",
+            "position": "1B",
+            "stats": {
+              "at_bats": 585,
+              "innings_pitched": "",
+              "r": 72,
+              "hr": 27,
+              "rbi": 88,
+              "sb": 0,
+              "avg": ".238",
+              "obp": ".297",
+              "slg": ".421",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          {
+            "id": 543807,
+            "name": "George Springer",
+            "team": "Toronto Blue Jays",
+            "position": "OF",
+            "stats": {
+              "at_bats": 498,
+              "innings_pitched": "",
+              "r": 106,
+              "hr": 32,
+              "rbi": 84,
+              "sb": 0,
+              "avg": ".309",
+              "obp": ".399",
+              "slg": ".560",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
           }
         ]
       }
     ]
   },
   "current_round": 1,
-  "current_pick": 6,
+  "current_pick": 8,
   "is_complete": false
 }
