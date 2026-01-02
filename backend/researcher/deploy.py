@@ -9,10 +9,9 @@ import sys
 import os
 import json
 from pathlib import Path
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-# Load environment variables from .env file
-load_dotenv(override=True)
+load_dotenv(override=True, dotenv_path=find_dotenv())
 
 
 def run_command(cmd, capture_output=False, shell=False):

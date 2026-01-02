@@ -1,6 +1,8 @@
+import { API_BASE_URL } from '../constants/draftConstants';
+
 class PlayerService {
   async checkPlayerPool() {
-    const url = `/v1/player-pool/check`;
+    const url = `${API_BASE_URL}/v1/player-pool/check`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -19,8 +21,8 @@ class PlayerService {
 
   async getPlayerPool(poolId = null) {
     const url = poolId 
-      ? `/v1/player-pools/${poolId}`
-      : `/v1/player-pool`;
+      ? `${API_BASE_URL}/v1/player-pools/${poolId}`
+      : `${API_BASE_URL}/v1/player-pool`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -38,7 +40,7 @@ class PlayerService {
   }
 
   async getPlayer(playerId) {
-    const url = `/v1/players/${playerId}`;
+    const url = `${API_BASE_URL}/v1/players/${playerId}`;
     
     const response = await fetch(url, {
       method: 'GET',

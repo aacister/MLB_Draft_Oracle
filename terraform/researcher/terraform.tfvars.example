@@ -9,11 +9,24 @@ openai_api_key = ""
 # API endpoint from Part 3 (get from Terraform output or API Gateway console)
 mlbdraftoracle_api_endpoint = "https://p15b8kyn61.execute-api.us-east-2.amazonaws.com/prod/ingest"
 
-# API key from Part 3 (get from API Gateway console)
+# API key from Part 3 (get from backend.api.Gateway console)
 # Set via environment variable: export TF_VAR_mlbdraftoracle_api_key="your-key-here"
 # Or pass via command line: terraform apply -var="mlbdraftoracle_api_key=your-key-here"
 mlbdraftoracle_api_key = ""
 
 # Enable automated research scheduler (optional, default is false)
 scheduler_enabled = false
+
+
+
+
+
+
+
+
+
+
+
+
+
 

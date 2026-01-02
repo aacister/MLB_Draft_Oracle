@@ -7,7 +7,7 @@
 - AI agents provide rationale behind their selections.
 
 ## Technologies
-- Python backend with FastAPI service level.
+- Python with FastAPI service level.
 - OpenAI Agents SDK
 - Model Context Protocol server and client used for AI Agent calls.
 - React with Tailwind CSS frontend

@@ -2,7 +2,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.exc import PendingRollbackError
-from .models import Team, PlayerPool, Player, Draft, DraftTeam, DraftHistory, SessionLocal, engine
+from backend.models import Team, PlayerPool, Player, Draft, DraftTeam, DraftHistory, SessionLocal, engine
 import json
 
 session = SessionLocal()

@@ -2,8 +2,10 @@ import os
 import json
 from pathlib import Path
 import logging
+from backend.config.settings import settings
 
-MEMORY_DIR = Path("/app/memory")
+# Use centralized settings
+MEMORY_DIR = Path(settings.MEMORY_DIR)
 
 def ensure_memory_dir():
     """Ensure memory directory exists"""

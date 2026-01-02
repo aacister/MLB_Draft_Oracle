@@ -84,7 +84,8 @@ def team_input():
 def researcher_agent_instructions(draft_id, team_name, strategy, needed_positions, available_players):
     return f"""
     
-    1. **Objective**: Target ONE specific position to reasearch from your needed positions, and identify and rank 3-5 players in your available players list that all play ONE specific position from your needed positions list and fit your team strategy.
+    1. **Objective**: Target ONE specific position to research from your needed positions, and identify and rank 3-5 players in your available players list that all play ONE specific position from your needed positions list and fit your team strategy.
+    
     2. **CRITICAL POSITION VALIDATION**: 
             - Your needed positions are: {needed_positions}
             - ONLY draft players whose position matches one of these needed positions
@@ -93,31 +94,38 @@ def researcher_agent_instructions(draft_id, team_name, strategy, needed_position
             - if a player is not in your available players list, DO NOT research them.
             - Consider your team strategy when selecting a position to research.
             - Your team strategy is:  {strategy}
+    
     3. **CRITICAL TOOL CALL LIMITS**
-        -Limit tool calls to 5 or less.
+        - Limit tool calls to 5 or less.
+    
     4. **Inputs**:
-        - Your draft id:
-        {draft_id}.
-        - Your team name:
-        {team_name}.
-        - Your draft strategy:
-        {strategy}
-        - Your needed positions:
-        {needed_positions}.
-        - Available players to draft from:
-        {available_players}
-    5. **Process**:
+        - Your draft id: {draft_id}.
+        - Your team name: {team_name}.
+        - Your draft strategy: {strategy}
+        - Your needed positions: {needed_positions}.
+        - Available players to draft from: {available_players}
+    
+    5. **Research Process**:
         - Limit tool calls to 5 or less.
         - Do not prompt user with questions.
         - If you get rate limit errors on calls, wait 10 seconds, and try again.
-        - First, analyze your needed positions list and select ONE specific position to target (e.g., if needed positions are "C,1B,SS", choose one like "1B").
-        - Conduct web searches only on players from the available players list who play the SAME specific position you chose.
-        - Analyze posts on X for up-to-date MLB player data (e.g., batting average, ERA, WAR, recent form, injuries).
-        - Rank 3-5 players, all playing the same position you targeted.
-        - For each player, provide:
-            - Name and position (should all be the same position).
-            - Key stats (e.g., batting average, ERA, WAR, stolen bases).
-            - Rationale for recommendation (e.g., recent hot streak, fits team need).
+        
+        
+        a) **Web Research** :
+           - Conduct targeted web searches for any gaps
+           - Navigate to ONE main source (FanGraphs or Razzball or mlb.com)
+           - Use browser_snapshot to read content
+           - If needed, visit ONE more page for verification
+        
+        b) **Analysis**:
+           - First, analyze your needed positions list and select ONE specific position to target (e.g., if needed positions are "C,1B,SS", choose one like "1B").
+           - Analyze posts on X and web searchesfor up-to-date MLB player data (e.g., batting average, ERA, WAR, recent form, injuries).
+           - Rank 3-5 players, all playing the same position you targeted.
+           - For each player, provide:
+              * Name and position (should all be the same position).
+              * Key stats (e.g., batting average, ERA, WAR, stolen bases).
+              * Rationale for recommendation (e.g., recent hot streak, fits team need).
+    
     6. **Final Output**: Create a prioritized list of 3-5 players, all playing the same position, in the following format:
         Target Position: [Position Name]
         Player List:

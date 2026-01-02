@@ -23,6 +23,7 @@ WORKDIR /app
 RUN mkdir -p /app/memory
 RUN mkdir -p /app/sqlite-data
 RUN mkdir -p /app/mcp_servers
+
 COPY ./requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .

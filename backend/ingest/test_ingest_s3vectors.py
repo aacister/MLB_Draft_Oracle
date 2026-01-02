@@ -8,12 +8,10 @@ import json
 import boto3
 import uuid
 import datetime
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from pathlib import Path
 
-# Load environment variables from project root
-env_path = Path(__file__).parent.parent.parent / '.env'
-load_dotenv(env_path, override=True)
+load_dotenv(override=True, dotenv_path=find_dotenv())
 
 # Get configuration
 VECTOR_BUCKET = os.getenv('VECTOR_BUCKET')

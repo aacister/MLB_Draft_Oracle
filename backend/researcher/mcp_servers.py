@@ -1,10 +1,9 @@
 
 import os
 from typing import Dict, Any
-import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 
-load_dotenv(override=True)
+load_dotenv(override=True, dotenv_path=find_dotenv())
 brave_api_key = os.getenv("BRAVE_API_KEY")
 
 # Validate that BRAVE_API_KEY is set
@@ -15,7 +14,9 @@ if not brave_api_key:
         "Get your API key from: https://api.search.brave.com/"
     )
 
-brave_env = {"BRAVE_API_KEY": brave_api_key}
+# Merge with existing environment to preserve PATH and other variables
+brave_env = os.environ.copy()
+brave_env["BRAVE_API_KEY"] = brave_api_key
 
 researcher_mcp_server_params = [
     {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-brave-search"], "env": brave_env}

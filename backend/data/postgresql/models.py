@@ -4,11 +4,14 @@ from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
+from backend.config.settings import settings
 
 Base = declarative_base()
-engine=None
+engine = None
+
+# Use centralized settings
+if not settings.is_dev:
+    db_url = os.getenv("DB_URL")
 
 
 if os.getenv("DEPLOYMENT_ENVIRONMENT") != 'DEV':

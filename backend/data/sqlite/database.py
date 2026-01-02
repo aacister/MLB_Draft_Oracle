@@ -1,20 +1,11 @@
 import sqlite3
 import json
 from datetime import datetime
-import os
+from backend.config.settings import settings
 
-#DB = "backend/data/mlbdraftoracle.db"
-DB = "/app/sqlite-data/mlbdraftoracle.db" 
-'''
-if os.path.exists(file_path):
-    try:
-        os.remove(file_path)
-    except Exception as e:
-        print(f"Error deleting file '{file_path}': {e}")
-else:
-    print(f"File '{file_path}' does not exist")    
-'''
-#if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
+# Use centralized settings
+DB = settings.SQLITE_DB_PATH
+
 with sqlite3.connect(DB) as conn:
     cursor = conn.cursor()
     cursor.execute('CREATE TABLE IF NOT EXISTS teams (name TEXT PRIMARY KEY, data TEXT)')        

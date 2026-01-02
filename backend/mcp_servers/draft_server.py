@@ -14,18 +14,15 @@ from mcp.server.fastmcp import FastMCP
 from typing import List
 
 
-#db_url = os.getenv("DB_URL")
-#print(f"{db_url}") 
+
 db_url = "postgresql://rootuser:RogerFedererNumber1@mlb-draft-oracle-database.cn46mqoccdqx.us-east-2.rds.amazonaws.com:5432/postgres"
-os.environ["DEPLOYMENT_ENVIRONMENT"] = "DEV"
 
 try:
-    
-    MODELS_AVAILABLE = True
-    print("All models imported successfully")
+    backend_models_AVAILABLE = True
+    print("All backend.models imported successfully")
 except Exception as e:
-    print(f"Warning: Could not import models: {e}")
-    MODELS_AVAILABLE = False
+    print(f"Warning: Could not import backend.models: {e}")
+    backend_models_AVAILABLE = False
     
 mcp = FastMCP(
     name="draft_server",
@@ -51,8 +48,8 @@ async def draft_specific_player(draft_id, team_name, player_name, round_num, pic
             pick: The current pick number
             rationale: The rationale for the player selection and fit with the team's strategy
         """
-        if not MODELS_AVAILABLE:
-            return f"Error: Database models not available. Cannot draft player {player_name}."
+        if not backend_models_AVAILABLE:
+            return f"Error: Database backend.models not available. Cannot draft player {player_name}."
         
         draft = await Draft.get(draft_id)
         if draft == None:
@@ -89,22 +86,22 @@ async def draft_specific_player(draft_id, team_name, player_name, round_num, pic
 
 @mcp.resource("draft://player_pool/{id}")
 async def read_draft_player_pool_resource(id: str) -> str:
-    if not MODELS_AVAILABLE:
-        return "Error: Database models not available."
+    if not backend_models_AVAILABLE:
+        return "Error: Database backend.models not available."
     draft = await Draft.get(id.lower())
     return draft.get_draft_player_pool()
 
 @mcp.resource("draft://player_pool/{id}/available")
 async def read_draft_player_pool_available_resource(id: str) -> str:
-    if not MODELS_AVAILABLE:
-        return "Error: Database models not available."
+    if not backend_models_AVAILABLE:
+        return "Error: Database backend.models not available."
     draft = await Draft.get(id.lower())
     return draft.get_undrafted_players()
 
 @mcp.resource("draft://team_roster/{id}/{team_name}")
 async def read_draft_team_roster_resource(id: str, team_name: str) -> str:
-    if not MODELS_AVAILABLE:
-        return "Error: Database models not available."
+    if not backend_models_AVAILABLE:
+        return "Error: Database backend.models not available."
     print("here")
     draft = await Draft.get(id.lower())
     print("Found draft.")
@@ -112,7 +109,7 @@ async def read_draft_team_roster_resource(id: str, team_name: str) -> str:
 
 @mcp.resource("draft://draft_order/{id}/round/{round}")
 async def get_draft_order(id: str, round: int) -> List[Team]:
-    if not MODELS_AVAILABLE:
+    if not backend_models_AVAILABLE:
         return []
     draft = await Draft.get(id.lower())
     return draft.get_draft_order(round)
@@ -120,8 +117,8 @@ async def get_draft_order(id: str, round: int) -> List[Team]:
 
 @mcp.resource("draft://history/{id}")
 async def read_draft_history_resource(id: str) -> str:
-    if not MODELS_AVAILABLE:
-        return "Error: Database models not available."
+    if not backend_models_AVAILABLE:
+        return "Error: Database backend.models not available."
     draft = await Draft.get(id.lower())
     return await DraftHistory.get(draft.id)
     

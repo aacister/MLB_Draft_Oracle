@@ -3,8 +3,8 @@ import { API_BASE_URL } from '../constants/draftConstants';
 class DraftService {
   async getDraft(draftId = null) {
     const url = draftId 
-      ? `/v1/drafts/${draftId}`
-      : `/v1/draft`;
+      ? `${API_BASE_URL}/v1/drafts/${draftId}`
+      : `${API_BASE_URL}/v1/draft`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -21,7 +21,7 @@ class DraftService {
   }
 
   async getAllDrafts() {
-    const url = `/v1/drafts`;
+    const url = `${API_BASE_URL}/v1/drafts`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -38,7 +38,7 @@ class DraftService {
   }
 
   async selectPlayer(draftId, teamName, round, pick) {
-    const url = `/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}/round/${round}/pick/${pick}/select-player`;
+    const url = `${API_BASE_URL}/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}/round/${round}/pick/${pick}/select-player`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -56,7 +56,7 @@ class DraftService {
   }
 
   async resumeDraft(draftId) {
-    const url = `/v1/drafts/${draftId}/resume`;
+    const url = `${API_BASE_URL}/v1/drafts/${draftId}/resume`;
     
     const response = await fetch(url, {
       method: 'POST',
@@ -74,7 +74,7 @@ class DraftService {
   }
 
   async getDraftHistory(draftId) {
-    const url = `/v1/draft-history/${draftId}`;
+    const url = `${API_BASE_URL}/v1/draft-history/${draftId}`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -92,7 +92,7 @@ class DraftService {
   }
 
   async getTeam(draftId, teamName) {
-    const url = `/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}`;
+    const url = `${API_BASE_URL}/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}`;
     
     const response = await fetch(url, {
       method: 'GET',

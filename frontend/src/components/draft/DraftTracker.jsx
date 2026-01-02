@@ -10,6 +10,7 @@ import HistoryTab from './HistoryTab';
 import PlayersTab from './PlayersTab';
 import { useDrafts } from '../../hooks/useDrafts';
 import { useDraftDetails } from '../../hooks/useDraftDetails';
+import { useResearch } from '../../hooks/useResearch';
 import { TAB_CONFIG } from '../../constants/draftConstants';
 import { getTeamForPick } from '../../utils/draftHelpers';
 
@@ -44,16 +45,20 @@ const DraftTracker = () => {
     fetchDraftDetails
   } = useDraftDetails();
 
+  const {
+    researching,
+    error: researchError,
+    generateResearch
+  } = useResearch();
+
   const runDraftPicks = async (draft, startRound, startPick) => {
     const numTeams = draft.draft_order.length;
     let current_pick = startPick;
     
-    // Set running state
     setRunningDraftId(draft.draft_id);
     
     try {
       for (let roundNum = startRound; roundNum <= draft.num_rounds; roundNum++) {
-        // Check if stop was requested
         if (stopDraftRef.current) {
           updateStatus(`Draft stopped at Round ${roundNum}, Pick ${current_pick}`);
           return;
@@ -64,7 +69,6 @@ const DraftTracker = () => {
         const lastPickOfRound = roundNum * picksInRound;
         
         for (let pickNum = Math.max(current_pick, firstPickOfRound); pickNum <= lastPickOfRound; pickNum++) {
-          // Check if stop was requested
           if (stopDraftRef.current) {
             updateStatus(`Draft stopped at Round ${roundNum}, Pick ${pickNum}`);
             return;
@@ -72,7 +76,6 @@ const DraftTracker = () => {
           
           const team_name = getTeamForPick(roundNum, pickNum, draft.draft_order);
           
-          // Update current pick state for UI
           setCurrentRound(roundNum);
           setCurrentPick(pickNum);
           
@@ -92,7 +95,6 @@ const DraftTracker = () => {
         }
       }
     } finally {
-      // Clear running state
       setRunningDraftId(null);
       setCurrentRound(null);
       setCurrentPick(null);
@@ -123,6 +125,21 @@ const DraftTracker = () => {
     } finally {
       setCreatingDraft(false);
       stopDraftRef.current = false;
+    }
+  };
+
+  const handleResearch = async () => {
+    try {
+      clearStatus();
+      updateStatus('Generating research on trending MLB topics...');
+      
+      const result = await generateResearch();
+      
+      updateStatus('Research complete! Analysis has been added to the knowledge base.');
+      console.log('Research result:', result);
+    } catch (err) {
+      console.error('Failed to generate research:', err);
+      updateStatus(`Research Error: ${err.message}`);
     }
   };
 
@@ -204,7 +221,7 @@ const DraftTracker = () => {
   const updateStatus = (status) => {
     setDraftStatus(status);
 
-    if (status.includes('is complete') || status.includes('stopped')) {
+    if (status.includes('is complete') || status.includes('stopped') || status.includes('Research complete')) {
       setTimeout(() => {
         clearStatus();
       }, 20000);
@@ -221,7 +238,7 @@ const DraftTracker = () => {
     setDraftStatus('');
   };
 
-  const error = draftsError || detailsError;
+  const error = draftsError || detailsError || researchError;
 
   if (!initializationComplete) {
     return (
@@ -238,8 +255,10 @@ const DraftTracker = () => {
       <Header
         onRefresh={fetchDrafts}
         onCreateDraft={handleCreateDraft}
+        onResearch={handleResearch}
         loading={loadingDrafts}
         creatingDraft={creatingDraft}
+        researching={researching}
         draftStatus={draftStatus}
         playerPoolLoaded={!!playerPool}
         isDraftRunning={runningDraftId !== null}

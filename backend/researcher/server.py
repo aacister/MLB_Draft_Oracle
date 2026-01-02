@@ -5,45 +5,31 @@ from datetime import datetime, UTC
 from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from agents import Agent, Runner, trace
 from agents.mcp import MCPServerStdio
-#from agents.extensions.models.litellm_model import LitellmModel
+#from agents.extensionsbackend.models.litellm_model import LitellmModel
 
 # Suppress LiteLLM warnings about optional dependencies
 logging.getLogger("LiteLLM").setLevel(logging.CRITICAL)
 
 # Import from our modules
 from context import get_agent_instructions, DEFAULT_RESEARCH_PROMPT
-from mcp_servers import researcher_mcp_server_params
+from backend.mcp_servers import researcher_mcp_server_params
 from tools import ingest_knowledge_base_document
 
 # Load environment
-load_dotenv(override=True)
+load_dotenv(override=True, dotenv_path=find_dotenv())
 
 app = FastAPI(title="MLBDraftOracle Knowledge Base Researcher Service")
 
 
 # Request model
 class ResearchRequest(BaseModel):
-    topic: Optional[str] = None  # Optional - if not provided, agent picks a topic
+    topic: Optional[str] = None  
 
 async def run_research_agent() -> str:
     query = DEFAULT_RESEARCH_PROMPT
-
-    # Please override these variables with the region you are using
-    # Other choices: us-west-2 (for OpenAI OSS models) and eu-central-1
-    #REGION = "us-east-2"
-    #os.environ["AWS_REGION_NAME"] = REGION  # LiteLLM's preferred variable
-    #os.environ["AWS_REGION"] = REGION  # Boto3 standard
-    #os.environ["AWS_DEFAULT_REGION"] = REGION  # Fallback
-
-    # Please override this variable with the model you are using
-    # Other choices: bedrock/eu.amazon.nova-lite-v1:0 for EU and bedrock/us.amazon.nova-lite-v1:0 for US
-    # bedrock/openai.gpt-oss-120b-1:0 for OpenAI OSS models
-    # bedrock/converse/us.anthropic.claude-sonnet-4-20250514-v1:0 for Claude Sonnet 4
-    #MODEL = "bedrock/us.amazon.nova-lite-v1:0"
-    #model = LitellmModel(model=MODEL)
 
     # Create and run the agent with MCP server
     with trace("Researcher"):
@@ -112,8 +98,6 @@ async def health():
         "mlbdraftoracle_ingest_api_configured": bool(os.getenv("MLBDRAFTORACLE_API_ENDPOINT") and os.getenv("MLBDRAFTORACLE_API_KEY")),
         "timestamp": datetime.now(UTC).isoformat(),
         "debug_container": container_indicators,
-        #"aws_region": os.environ.get("AWS_DEFAULT_REGION", "not set"),
-        #"bedrock_model": "bedrock/amazon.nova-pro-v1:0",
     }
 
 

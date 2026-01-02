@@ -49,7 +49,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 666214,
@@ -1831,7 +1831,29 @@
             },
             "is_drafted": true
           },
-          "OF": null,
+          "OF": {
+            "id": 665742,
+            "name": "Juan Soto",
+            "team": "New York Mets",
+            "position": "OF",
+            "stats": {
+              "at_bats": 577,
+              "innings_pitched": "",
+              "r": 120,
+              "hr": 43,
+              "rbi": 105,
+              "sb": 0,
+              "avg": ".263",
+              "obp": ".396",
+              "slg": ".525",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
           "P": {
             "id": 554430,
             "name": "Zack Wheeler",
@@ -1918,6 +1940,29 @@
               "avg": ".247",
               "obp": ".359",
               "slg": ".589",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          {
+            "id": 665742,
+            "name": "Juan Soto",
+            "team": "New York Mets",
+            "position": "OF",
+            "stats": {
+              "at_bats": 577,
+              "innings_pitched": "",
+              "r": 120,
+              "hr": 43,
+              "rbi": 105,
+              "sb": 0,
+              "avg": ".263",
+              "obp": ".396",
+              "slg": ".525",
               "w": 0,
               "k": 0,
               "era": "-,--",
@@ -2078,6 +2123,6 @@
     ]
   },
   "current_round": 1,
-  "current_pick": 7,
+  "current_pick": 8,
   "is_complete": false
 }

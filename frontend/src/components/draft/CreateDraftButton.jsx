@@ -14,7 +14,7 @@ const CreateDraftButton = ({ onClick, loading = false, disabled = false }) => {
       title={disabled ? "Another draft is already running" : ""}
     >
       <Plus className="h-4 w-4 mr-2" />
-      {loading ? 'Drafting...' : 'Run Draft'}
+      {loading ? 'Drafting...' : 'Draft'}
     </button>
   );
 };

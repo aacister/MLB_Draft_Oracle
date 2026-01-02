@@ -1,0 +1,30 @@
+# Use AWS Lambda Python base image
+FROM public.ecr.aws/lambda/python:3.11
+
+# Install Node.js 16 (compatible with Amazon Linux 2 glibc)
+RUN yum install -y tar gzip && \
+    curl -fsSL https://rpm.nodesource.com/setup_16.x | bash - && \
+    yum install -y nodejs && \
+    yum clean all
+
+# Set working directory
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+# Create necessary directories
+RUN mkdir -p ${LAMBDA_TASK_ROOT}/memory
+RUN mkdir -p ${LAMBDA_TASK_ROOT}/sqlite-data
+RUN mkdir -p ${LAMBDA_TASK_ROOT}/mcp_servers
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY backend/ ${LAMBDA_TASK_ROOT}/backend/
+COPY mcp_servers/ ${LAMBDA_TASK_ROOT}/mcp_servers/
+
+# Copy frontend build (if needed for serving static files)
+COPY frontend/dist/ ${LAMBDA_TASK_ROOT}/static/
+
+# Set the Lambda handler
+CMD ["backend.api.lambda_handler.handler"]

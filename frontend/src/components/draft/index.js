@@ -7,6 +7,7 @@ export { default as DraftBoardTab } from './DraftBoardTab';
 export { default as DraftStatusTracker } from './DraftStatusTracker';
 export { default as DraftsList } from './DraftsList';
 export { default as CreateDraftButton } from './CreateDraftButton';
+export { default as ResearchButton } from './ResearchButton';
 export { default as DraftsHeader } from './DraftsHeader';
 export { default as InitializationLoader } from './InitializationLoader';
 export { default as DraftStatusBadge } from './DraftStatusBadge';

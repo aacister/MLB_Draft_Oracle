@@ -1,5 +1,19 @@
-export const API_BASE_URL = process.env.REACT_APP_API_URL;
-//export const API_BASE_URL = 'http://localhost:8000';
+const getApiBaseUrl = () => {
+  //return 'https://0ikbgoqbk7.execute-api.us-east-2.amazonaws.com';
+  
+    // Check if we're in Lambda environment (deployed to AWS)
+    const deploymentEnv = import.meta.env.VITE_DEPLOYMENT_ENVIRONMENT;
+    
+    if (deploymentEnv === 'LAMBDA') {
+        
+      requestIdleCallback
+    } else {
+        return '';
+    }
+      
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export const POSITIONS = ['1B',  'C', 'OF', 'P'];
 

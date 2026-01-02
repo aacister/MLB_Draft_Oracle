@@ -226,7 +226,7 @@ async def resume_draft(draft_id: str):
             # Reconstruct draft from memory state
             draft = Draft.from_dict(memory_state)
         else:
-            logging.info(f"Draft {draft_id} not in memory, loading from database")
+            logging.info(f"Draft {draft_id} not in memory, loading from backend.data.ase")
             # Fall back to database
             draft = await Draft.get(draft_id.lower())
         

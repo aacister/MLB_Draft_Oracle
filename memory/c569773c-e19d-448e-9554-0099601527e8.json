@@ -1,6 +1,6 @@
 {
-  "id": "3abdbc3f-71bc-4b6e-bbb1-6bed38dbdf02",
-  "name": "CurveBallinThroughelectDraft",
+  "id": "c569773c-e19d-448e-9554-0099601527e8",
+  "name": "BuntAndChuckleDraft",
   "num_rounds": 4,
   "player_pool": {
     "id": "446e77fd-bd1f-43ad-981e-a2058dc879ca",
@@ -187,7 +187,7 @@
           "whip": "1.09",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 621381,
@@ -279,7 +279,7 @@
           "whip": "0.89",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 663623,
@@ -670,7 +670,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 695243,
@@ -739,7 +739,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 621493,
@@ -785,7 +785,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 669461,
@@ -923,7 +923,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 668227,
@@ -1061,7 +1061,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 663698,
@@ -1521,7 +1521,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 683737,
@@ -1779,11 +1779,11 @@
     ]
   },
   "teams": {
-    "draft_id": "3abdbc3f-71bc-4b6e-bbb1-6bed38dbdf02",
+    "draft_id": "c569773c-e19d-448e-9554-0099601527e8",
     "teams": [
       {
-        "name": "BatterUpButtercup",
-        "strategy": "Prioritize drafting a top-tier starting pitcher (SP) in the first few rounds,\naiming for an \"ace\" who can anchor your pitching staff.",
+        "name": "EveryDayIsBatterday",
+        "strategy": "Draft players across all categories (hitting and pitching) in each round, \naiming for a well-rounded team with no major weaknesses.",
         "roster": {
           "C": null,
           "1B": null,
@@ -1793,8 +1793,8 @@
         "drafted_players": []
       },
       {
-        "name": "TheHomerunHustlers",
-        "strategy": "Draft a large number of high-quality pitchers early \nand rely on them to carry your team to victory.",
+        "name": "SwingAndAMissouri",
+        "strategy": "Draft players across all categories (hitting and pitching) in each round, \naiming for a well-rounded team with no major weaknesses.",
         "roster": {
           "C": null,
           "1B": null,

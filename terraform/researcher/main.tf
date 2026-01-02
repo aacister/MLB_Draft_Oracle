@@ -8,7 +8,7 @@ terraform {
     }
   }
   
-  # Using local backend - state will be stored in terraform.tfstate in this directory
+  # Using local - state will be stored in terraform.tfstate in this directory
   # This is automatically gitignored for security
 }
 
@@ -115,7 +115,7 @@ resource "aws_iam_role_policy" "app_runner_instance_bedrock_access" {
         Action = [
           "bedrock:InvokeModel",
           "bedrock:InvokeModelWithResponseStream",
-          "bedrock:ListFoundationModels"
+          "bedrock:ListFoundatiobackend.models"
         ]
         Resource = "*"
       }
@@ -197,8 +197,8 @@ resource "aws_lambda_function" "scheduler_lambda" {
   role          = aws_iam_role.lambda_scheduler_role[0].arn
   
   # Note: The deployment package will be created by the guide instructions
-  filename         = "${path.module}/../../backend/scheduler/lambda_function.zip"
-  source_code_hash = fileexists("${path.module}/../../backend/scheduler/lambda_function.zip") ? filebase64sha256("${path.module}/../../backend/scheduler/lambda_function.zip") : null
+  filename         = "${path.module}/../../scheduler/lambda_function.zip"
+  source_code_hash = fileexists("${path.module}/../../scheduler/lambda_function.zip") ? filebase64sha256("${path.module}/../../scheduler/lambda_function.zip") : null
   
   handler     = "lambda_function.handler"
   runtime     = "python3.12"

@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from pathlib import Path
 import requests
 from pydantic import BaseModel, Field
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-load_dotenv(override=True)
+load_dotenv(override=True, dotenv_path=find_dotenv())
 
 pushover_user = os.getenv("PUSHOVER_USER")
 pushover_token = os.getenv("PUSHOVER_TOKEN")

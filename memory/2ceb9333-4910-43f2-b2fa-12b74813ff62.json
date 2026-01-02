@@ -1,6 +1,6 @@
 {
-  "id": "8e092244-c644-4d90-b9e8-17fc84c69388",
-  "name": "SwingAndACrimsonDraft",
+  "id": "2ceb9333-4910-43f2-b2fa-12b74813ff62",
+  "name": "BatsOuttaHellDraft",
   "num_rounds": 4,
   "player_pool": {
     "id": "446e77fd-bd1f-43ad-981e-a2058dc879ca",
@@ -164,7 +164,7 @@
           "whip": "1.24",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 571510,
@@ -440,7 +440,7 @@
           "whip": "0.93",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 656605,
@@ -670,7 +670,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 695243,
@@ -739,7 +739,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 621493,
@@ -762,7 +762,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 621566,
@@ -1061,7 +1061,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 663698,
@@ -1222,7 +1222,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 666310,
@@ -1360,7 +1360,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": false
+        "is_drafted": true
       },
       {
         "id": 547180,
@@ -1521,7 +1521,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 683737,
@@ -1544,7 +1544,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 669065,
@@ -1682,7 +1682,7 @@
           "whip": "-.--",
           "s": 0
         },
-        "is_drafted": true
+        "is_drafted": false
       },
       {
         "id": 700932,
@@ -1779,50 +1779,28 @@
     ]
   },
   "teams": {
-    "draft_id": "8e092244-c644-4d90-b9e8-17fc84c69388",
+    "draft_id": "2ceb9333-4910-43f2-b2fa-12b74813ff62",
     "teams": [
       {
-        "name": "BusterPoseyAndTheGoonies",
-        "strategy": "Draft a large number of high-quality pitchers early \nand rely on them to carry your team to victory.",
+        "name": "BatterUpButtercup",
+        "strategy": "Target players with high home run (HR) and runs batted in (RBI) potential early in the draft, \npotentially sacrificing some speed or average.",
         "roster": {
-          "C": {
-            "id": 608348,
-            "name": "Carson Kelly",
-            "team": "Chicago Cubs",
-            "position": "C",
-            "stats": {
-              "at_bats": 369,
-              "innings_pitched": "",
-              "r": 48,
-              "hr": 17,
-              "rbi": 50,
-              "sb": 0,
-              "avg": ".249",
-              "obp": ".333",
-              "slg": ".428",
-              "w": 0,
-              "k": 0,
-              "era": "-,--",
-              "whip": "-.--",
-              "s": 0
-            },
-            "is_drafted": true
-          },
+          "C": null,
           "1B": {
-            "id": 679529,
-            "name": "Spencer Torkelson",
-            "team": "Detroit Tigers",
+            "id": 621566,
+            "name": "Matt Olson",
+            "team": "Atlanta Braves",
             "position": "1B",
             "stats": {
-              "at_bats": 563,
+              "at_bats": 624,
               "innings_pitched": "",
-              "r": 82,
-              "hr": 31,
-              "rbi": 78,
+              "r": 98,
+              "hr": 29,
+              "rbi": 95,
               "sb": 0,
-              "avg": ".240",
-              "obp": ".333",
-              "slg": ".456",
+              "avg": ".272",
+              "obp": ".366",
+              "slg": ".484",
               "w": 0,
               "k": 0,
               "era": "-,--",
@@ -1832,20 +1810,20 @@
             "is_drafted": true
           },
           "OF": {
-            "id": 621493,
-            "name": "Taylor Ward",
-            "team": "Baltimore Orioles",
+            "id": 682985,
+            "name": "Riley Greene",
+            "team": "Detroit Tigers",
             "position": "OF",
             "stats": {
-              "at_bats": 579,
+              "at_bats": 600,
               "innings_pitched": "",
-              "r": 86,
+              "r": 84,
               "hr": 36,
-              "rbi": 103,
+              "rbi": 111,
               "sb": 0,
-              "avg": ".228",
-              "obp": ".317",
-              "slg": ".475",
+              "avg": ".258",
+              "obp": ".313",
+              "slg": ".493",
               "w": 0,
               "k": 0,
               "era": "-,--",
@@ -1855,13 +1833,13 @@
             "is_drafted": true
           },
           "P": {
-            "id": 693433,
-            "name": "Bryan Woo",
-            "team": "Seattle Mariners",
+            "id": 571510,
+            "name": "Matthew Boyd",
+            "team": "Chicago Cubs",
             "position": "P",
             "stats": {
               "at_bats": 0,
-              "innings_pitched": "186.2",
+              "innings_pitched": "179.2",
               "r": 0,
               "hr": 0,
               "rbi": 0,
@@ -1869,10 +1847,10 @@
               "avg": ".000",
               "obp": ".000",
               "slg": ".000",
-              "w": 15,
-              "k": 198,
-              "era": "2.94",
-              "whip": "0.93",
+              "w": 14,
+              "k": 154,
+              "era": "3.21",
+              "whip": "1.09",
               "s": 0
             },
             "is_drafted": true
@@ -1880,13 +1858,59 @@
         },
         "drafted_players": [
           {
-            "id": 693433,
-            "name": "Bryan Woo",
-            "team": "Seattle Mariners",
+            "id": 621566,
+            "name": "Matt Olson",
+            "team": "Atlanta Braves",
+            "position": "1B",
+            "stats": {
+              "at_bats": 624,
+              "innings_pitched": "",
+              "r": 98,
+              "hr": 29,
+              "rbi": 95,
+              "sb": 0,
+              "avg": ".272",
+              "obp": ".366",
+              "slg": ".484",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          {
+            "id": 682985,
+            "name": "Riley Greene",
+            "team": "Detroit Tigers",
+            "position": "OF",
+            "stats": {
+              "at_bats": 600,
+              "innings_pitched": "",
+              "r": 84,
+              "hr": 36,
+              "rbi": 111,
+              "sb": 0,
+              "avg": ".258",
+              "obp": ".313",
+              "slg": ".493",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          {
+            "id": 571510,
+            "name": "Matthew Boyd",
+            "team": "Chicago Cubs",
             "position": "P",
             "stats": {
               "at_bats": 0,
-              "innings_pitched": "186.2",
+              "innings_pitched": "179.2",
               "r": 0,
               "hr": 0,
               "rbi": 0,
@@ -1894,79 +1918,10 @@
               "avg": ".000",
               "obp": ".000",
               "slg": ".000",
-              "w": 15,
-              "k": 198,
-              "era": "2.94",
-              "whip": "0.93",
-              "s": 0
-            },
-            "is_drafted": true
-          },
-          {
-            "id": 608348,
-            "name": "Carson Kelly",
-            "team": "Chicago Cubs",
-            "position": "C",
-            "stats": {
-              "at_bats": 369,
-              "innings_pitched": "",
-              "r": 48,
-              "hr": 17,
-              "rbi": 50,
-              "sb": 0,
-              "avg": ".249",
-              "obp": ".333",
-              "slg": ".428",
-              "w": 0,
-              "k": 0,
-              "era": "-,--",
-              "whip": "-.--",
-              "s": 0
-            },
-            "is_drafted": true
-          },
-          {
-            "id": 621493,
-            "name": "Taylor Ward",
-            "team": "Baltimore Orioles",
-            "position": "OF",
-            "stats": {
-              "at_bats": 579,
-              "innings_pitched": "",
-              "r": 86,
-              "hr": 36,
-              "rbi": 103,
-              "sb": 0,
-              "avg": ".228",
-              "obp": ".317",
-              "slg": ".475",
-              "w": 0,
-              "k": 0,
-              "era": "-,--",
-              "whip": "-.--",
-              "s": 0
-            },
-            "is_drafted": true
-          },
-          {
-            "id": 679529,
-            "name": "Spencer Torkelson",
-            "team": "Detroit Tigers",
-            "position": "1B",
-            "stats": {
-              "at_bats": 563,
-              "innings_pitched": "",
-              "r": 82,
-              "hr": 31,
-              "rbi": 78,
-              "sb": 0,
-              "avg": ".240",
-              "obp": ".333",
-              "slg": ".456",
-              "w": 0,
-              "k": 0,
-              "era": "-,--",
-              "whip": "-.--",
+              "w": 14,
+              "k": 154,
+              "era": "3.21",
+              "whip": "1.09",
               "s": 0
             },
             "is_drafted": true
@@ -1974,24 +1929,24 @@
         ]
       },
       {
-        "name": "TheBuntIsYetToCome",
-        "strategy": "Target players with high home run (HR) and runs batted in (RBI) potential early in the draft, \npotentially sacrificing some speed or average.",
+        "name": "SlamDunkinPitchers",
+        "strategy": "Prioritize drafting a top-tier starting pitcher (SP) in the first few rounds,\naiming for an \"ace\" who can anchor your pitching staff.",
         "roster": {
           "C": {
-            "id": 663886,
-            "name": "Tyler Stephenson",
-            "team": "Cincinnati Reds",
+            "id": 608348,
+            "name": "Carson Kelly",
+            "team": "Chicago Cubs",
             "position": "C",
             "stats": {
-              "at_bats": 299,
+              "at_bats": 369,
               "innings_pitched": "",
-              "r": 40,
-              "hr": 13,
+              "r": 48,
+              "hr": 17,
               "rbi": 50,
               "sb": 0,
-              "avg": ".231",
-              "obp": ".316",
-              "slg": ".421",
+              "avg": ".249",
+              "obp": ".333",
+              "slg": ".428",
               "w": 0,
               "k": 0,
               "era": "-,--",
@@ -2000,60 +1955,16 @@
             },
             "is_drafted": true
           },
-          "1B": {
-            "id": 683737,
-            "name": "Michael Busch",
-            "team": "Chicago Cubs",
-            "position": "1B",
-            "stats": {
-              "at_bats": 524,
-              "innings_pitched": "",
-              "r": 78,
-              "hr": 34,
-              "rbi": 90,
-              "sb": 0,
-              "avg": ".261",
-              "obp": ".343",
-              "slg": ".523",
-              "w": 0,
-              "k": 0,
-              "era": "-,--",
-              "whip": "-.--",
-              "s": 0
-            },
-            "is_drafted": true
-          },
-          "OF": {
-            "id": 592450,
-            "name": "Aaron Judge",
-            "team": "New York Yankees",
-            "position": "OF",
-            "stats": {
-              "at_bats": 541,
-              "innings_pitched": "",
-              "r": 137,
-              "hr": 53,
-              "rbi": 114,
-              "sb": 0,
-              "avg": ".331",
-              "obp": ".457",
-              "slg": ".688",
-              "w": 0,
-              "k": 0,
-              "era": "-,--",
-              "whip": "-.--",
-              "s": 0
-            },
-            "is_drafted": true
-          },
+          "1B": null,
+          "OF": null,
           "P": {
-            "id": 663903,
-            "name": "Brady Singer",
-            "team": "Cincinnati Reds",
+            "id": 669373,
+            "name": "Tarik Skubal",
+            "team": "Detroit Tigers",
             "position": "P",
             "stats": {
               "at_bats": 0,
-              "innings_pitched": "169.2",
+              "innings_pitched": "195.1",
               "r": 0,
               "hr": 0,
               "rbi": 0,
@@ -2061,10 +1972,10 @@
               "avg": ".000",
               "obp": ".000",
               "slg": ".000",
-              "w": 14,
-              "k": 163,
-              "era": "4.03",
-              "whip": "1.24",
+              "w": 13,
+              "k": 241,
+              "era": "2.21",
+              "whip": "0.89",
               "s": 0
             },
             "is_drafted": true
@@ -2072,82 +1983,13 @@
         },
         "drafted_players": [
           {
-            "id": 683737,
-            "name": "Michael Busch",
-            "team": "Chicago Cubs",
-            "position": "1B",
-            "stats": {
-              "at_bats": 524,
-              "innings_pitched": "",
-              "r": 78,
-              "hr": 34,
-              "rbi": 90,
-              "sb": 0,
-              "avg": ".261",
-              "obp": ".343",
-              "slg": ".523",
-              "w": 0,
-              "k": 0,
-              "era": "-,--",
-              "whip": "-.--",
-              "s": 0
-            },
-            "is_drafted": true
-          },
-          {
-            "id": 592450,
-            "name": "Aaron Judge",
-            "team": "New York Yankees",
-            "position": "OF",
-            "stats": {
-              "at_bats": 541,
-              "innings_pitched": "",
-              "r": 137,
-              "hr": 53,
-              "rbi": 114,
-              "sb": 0,
-              "avg": ".331",
-              "obp": ".457",
-              "slg": ".688",
-              "w": 0,
-              "k": 0,
-              "era": "-,--",
-              "whip": "-.--",
-              "s": 0
-            },
-            "is_drafted": true
-          },
-          {
-            "id": 663886,
-            "name": "Tyler Stephenson",
-            "team": "Cincinnati Reds",
-            "position": "C",
-            "stats": {
-              "at_bats": 299,
-              "innings_pitched": "",
-              "r": 40,
-              "hr": 13,
-              "rbi": 50,
-              "sb": 0,
-              "avg": ".231",
-              "obp": ".316",
-              "slg": ".421",
-              "w": 0,
-              "k": 0,
-              "era": "-,--",
-              "whip": "-.--",
-              "s": 0
-            },
-            "is_drafted": true
-          },
-          {
-            "id": 663903,
-            "name": "Brady Singer",
-            "team": "Cincinnati Reds",
+            "id": 669373,
+            "name": "Tarik Skubal",
+            "team": "Detroit Tigers",
             "position": "P",
             "stats": {
               "at_bats": 0,
-              "innings_pitched": "169.2",
+              "innings_pitched": "195.1",
               "r": 0,
               "hr": 0,
               "rbi": 0,
@@ -2155,10 +1997,33 @@
               "avg": ".000",
               "obp": ".000",
               "slg": ".000",
-              "w": 14,
-              "k": 163,
-              "era": "4.03",
-              "whip": "1.24",
+              "w": 13,
+              "k": 241,
+              "era": "2.21",
+              "whip": "0.89",
+              "s": 0
+            },
+            "is_drafted": true
+          },
+          {
+            "id": 608348,
+            "name": "Carson Kelly",
+            "team": "Chicago Cubs",
+            "position": "C",
+            "stats": {
+              "at_bats": 369,
+              "innings_pitched": "",
+              "r": 48,
+              "hr": 17,
+              "rbi": 50,
+              "sb": 0,
+              "avg": ".249",
+              "obp": ".333",
+              "slg": ".428",
+              "w": 0,
+              "k": 0,
+              "era": "-,--",
+              "whip": "-.--",
               "s": 0
             },
             "is_drafted": true
@@ -2168,6 +2033,6 @@
     ]
   },
   "current_round": 1,
-  "current_pick": 8,
-  "is_complete": true
+  "current_pick": 6,
+  "is_complete": false
 }

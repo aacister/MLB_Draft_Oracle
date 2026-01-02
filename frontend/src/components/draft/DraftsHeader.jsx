@@ -1,17 +1,20 @@
 import React from 'react';
 import { RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import CreateDraftButton from './CreateDraftButton';
+import ResearchButton from './ResearchButton';
 import DraftStatusTracker from './DraftStatusTracker';
 import AppNoteComponent from '../common/AppNote';
 
 const Header = ({ 
   onRefresh, 
-  onCreateDraft, 
+  onCreateDraft,
+  onResearch,
   loading, 
-  creatingDraft, 
+  creatingDraft,
+  researching,
   draftStatus, 
   playerPoolLoaded,
-  isDraftRunning = false // New prop to indicate if any draft is running
+  isDraftRunning = false
 }) => {
   const isStatusActive = draftStatus && !draftStatus.includes('complete') && !draftStatus.includes('Error') && !draftStatus.includes('stopped');
   
@@ -45,11 +48,18 @@ const Header = ({
               )}
             </div>
 
-            <CreateDraftButton
-              onClick={onCreateDraft}
-              loading={creatingDraft}
-              disabled={isDraftRunning}
-            />
+            <div className="flex gap-2">
+              <ResearchButton
+                onClick={onResearch}
+                loading={researching}
+                disabled={isDraftRunning}
+              />
+              <CreateDraftButton
+                onClick={onCreateDraft}
+                loading={creatingDraft}
+                disabled={isDraftRunning}
+              />
+            </div>
           </div>
         </div>
       </div>

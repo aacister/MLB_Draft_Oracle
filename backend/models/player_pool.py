@@ -22,7 +22,7 @@ class PlayerPool(BaseModel):
 
     @classmethod
     async def get(cls, id: Optional[str]):
-        # First, try to get any existing player pool from database
+        # First, try to get any existing player pool from backend.data.ase
         if id is None:
             # Check if any player pool exists in the database
             from backend.data.sqlite.database import get_latest_player_pool
