@@ -17,4 +17,5 @@ uv
 boto3
 tenacity
 mangum
+alembic==1.12.1
 

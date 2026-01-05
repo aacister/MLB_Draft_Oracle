@@ -73,8 +73,8 @@ def main():
         shutil.copytree("mcp_servers", "lambda-package/mcp_servers")
 
     # Copybackend.models directory
-    if os.path.exists(backend.models"):
-        shutil.copytree(backend.models", "lambda-packagebackend.models")
+    if os.path.exists("backend.models"):
+        shutil.copytree("backend.models", "lambda-packagebackend.models")
     
     # Copy templates directory
     if os.path.exists("templates"):

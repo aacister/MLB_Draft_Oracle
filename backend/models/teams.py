@@ -3,7 +3,7 @@ import json
 from pydantic import BaseModel, Field
 from backend.utils.util import Position, NO_OF_TEAMS, NO_OF_ROUNDS
 from backend.models.players import Player
-from backend.data.sqlite.database import write_team, read_team
+from backend.data.postgresql.unified_db import write_team, read_team
 from agents import Agent,  Runner, trace
 from contextlib import AsyncExitStack
 from agents.mcp import MCPServerStdio, MCPServerStreamableHttp

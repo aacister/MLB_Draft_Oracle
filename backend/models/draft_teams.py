@@ -1,7 +1,7 @@
 from typing import List
 from backend.models.teams import Team
 from backend.utils.util import Position
-from backend.data.sqlite.database import read_draft_teams, write_draft_teams
+from backend.data.postgresql.unified_db import read_draft_teams, write_draft_teams
 #from backend.data.postgresql.main import read_postgres_draft_teams, write_postgres_draft_teams
 from backend.utils.util import  draft_strategy_set
 from pydantic import BaseModel, Field
@@ -12,11 +12,7 @@ from agents import Runner
 import random
 import os
 
-#if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
-#    use_local_db = True
-#else: 
-#    use_local_db = False
-use_local_db = True
+
 
 class DraftTeams(BaseModel):
     draft_id: str = Field(description="Id of the draft.")

@@ -5,9 +5,12 @@ from datetime import datetime, timezone
 from dotenv import load_dotenv
 import os
 from backend.config.settings import settings
+from backend.data.postgresql.connection import get_engine, get_session
+
 
 Base = declarative_base()
-engine = None
+engine = get_engine()
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Use centralized settings
 if not settings.is_dev:
@@ -17,7 +20,7 @@ if not settings.is_dev:
 if os.getenv("DEPLOYMENT_ENVIRONMENT") != 'DEV':
     # Use hardcoded PostgreSQL URL
     #db_url = os.getenv("DB_URL")
-    db_url = "postgresql://rootuser:RogerFedererNumber1@mlb-draft-oracle-database.cn46mqoccdqx.us-east-2.rds.amazonaws.com:5432/postgres"
+    #db_url = "postgresql://rootuser:RogerFedererNumber1@mlb-draft-oracle-database.cn46mqoccdqx.us-east-2.rds.amazonaws.com:5432/postgres"
     print(f"{db_url}")
     if db_url:
         try:
@@ -38,8 +41,8 @@ if os.getenv("DEPLOYMENT_ENVIRONMENT") != 'DEV':
 
 if engine is not None:
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-else:
-    SessionLocal = None
+#else:
+#    SessionLocal = None
 
 class Team(Base):
     __tablename__ = 'teams'

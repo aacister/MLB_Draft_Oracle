@@ -1,15 +1,10 @@
 from typing import List
 from backend.models.players import Player
-from backend.data.sqlite.database import read_draft_history, write_draft_history
+from backend.data.postgresql.unified_db import read_draft_history, write_draft_history
 #from backend.data.postgresql.main import read_postgres_draft_history, write_postgres_draft_history
 from pydantic import BaseModel, Field
 import os
 
-#if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
-#    use_local_db = True
-#else: 
-#    use_local_db = False
-use_local_db = True
 
 class DraftHistoryItem(BaseModel):
     round: int
@@ -24,10 +19,7 @@ class DraftHistory(BaseModel):
 
     @classmethod
     async def get(cls, id: str):
-      #  if use_local_db:
         fields = read_draft_history(id.lower())
-     #   else:
-     #       fields = read_postgres_draft_history(id.lower())
         if not fields:
             from backend.models.draft import Draft
             items = await initialize_draft_history_items(id.lower())
@@ -52,10 +44,7 @@ class DraftHistory(BaseModel):
     
     def save(self):
         data = self.model_dump(by_alias=True)
-    #    if use_local_db:
         write_draft_history(self.draft_id.lower(), data)
-    #    else:
-    #        write_postgres_draft_history(self.draft_id.lower(), data)
 
 
 async def initialize_draft_history_items(id: str) -> List[DraftHistoryItem]:

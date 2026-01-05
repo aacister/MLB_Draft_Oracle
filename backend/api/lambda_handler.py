@@ -1,16 +1,16 @@
 from mangum import Mangum
 from backend.api.main import app
 import logging
+import os
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 def handler(event, context):
     """
-    Lambda handler with proper error handling and database initialization
+    Lambda handler with RDS PostgreSQL support
     """
     try:
-        # Log the incoming request for debugging
         logger.info(f"Received event: {event.get('httpMethod')} {event.get('path')}")
         
         # Handle OPTIONS requests directly for CORS preflight
@@ -26,9 +26,14 @@ def handler(event, context):
                 'body': ''
             }
         
-        # Ensure database is downloaded before processing request
-        from backend.data.sqlite.s3_sync import ensure_db_downloaded
-        ensure_db_downloaded()
+        # Check which database to use
+        use_rds = os.getenv('USE_POSTGRESQL', 'false').lower() == 'true' or os.getenv('DB_SECRET_ARN')
+        logger.info(f"Using {'PostgreSQL/RDS' if use_rds else 'SQLite'} database")
+        
+        # If using SQLite, ensure database is downloaded from S3
+        if not use_rds:
+            from backend.data.sqlite.s3_sync import ensure_db_downloaded
+            ensure_db_downloaded()
         
         # Use Mangum to handle the request
         asgi_handler = Mangum(app, lifespan="off")

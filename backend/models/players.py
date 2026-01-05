@@ -1,14 +1,9 @@
 from pydantic import BaseModel, Field
 from backend.models.player_stats import PlayerStatistics
-from backend.data.sqlite.database import read_player, write_player
+from backend.data.postgresql.unified_db import read_player, write_player
 #from backend.data.postgresql.main import read_postgres_player, write_postgres_player
 import os
 
-#if os.getenv("DEPLOYMENT_ENVIRONMENT") == 'DEV':
-#    use_local_db = True
-#else: 
-#    use_local_db = False
-use_local_db = True
 
 class Player(BaseModel):
     id: int = Field(description="Id of the player")
@@ -34,10 +29,7 @@ class Player(BaseModel):
     
     @classmethod
     def get(cls, id: int):
-    #    if use_local_db:
         fields = read_player(id)
-    #    else:
-    #        fields = read_postgres_player(id)
         if not fields:
             fields = {
                 "id": id,
@@ -55,10 +47,7 @@ class Player(BaseModel):
     
     def save(self):
         data = self.model_dump(by_alias=True)
-        #if use_local_db:
         write_player(self.id, data)
-    #    else:
-    #        write_postgres_player(self.id, data)
 
     def mark_drafted(self):
         self.is_drafted = True
