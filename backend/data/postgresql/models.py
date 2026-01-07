@@ -7,42 +7,13 @@ import os
 from backend.config.settings import settings
 from backend.data.postgresql.connection import get_engine, get_session
 
-
 Base = declarative_base()
 engine = get_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Use centralized settings
-if not settings.is_dev:
-    db_url = os.getenv("DB_URL")
-
-
-if os.getenv("DEPLOYMENT_ENVIRONMENT") != 'DEV':
-    # Use hardcoded PostgreSQL URL
-    #db_url = os.getenv("DB_URL")
-    #db_url = "postgresql://rootuser:RogerFedererNumber1@mlb-draft-oracle-database.cn46mqoccdqx.us-east-2.rds.amazonaws.com:5432/postgres"
-    print(f"{db_url}")
-    if db_url:
-        try:
-            # Add connection timeout and pool settings
-            engine = create_engine(
-                db_url,
-                pool_timeout=5,  # 5 second timeout
-                pool_recycle=300,  # Recycle connections after 5 minutes
-                connect_args={"connect_timeout": 5}  # 5 second connection timeout
-            )
-            print("PostgreSQL engine created successfully")
-        except Exception as e:
-            print(f"Failed to create PostgreSQL engine: {e}")
-            engine = None
-    else:
-        print("Warning: DB_URL not set, database functionality will be limited")
-        engine = None
-
-if engine is not None:
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-#else:
-#    SessionLocal = None
+# PostgreSQL RDS ONLY - all environments use RDS
+logger = __import__('logging').getLogger(__name__)
+logger.info("Using PostgreSQL RDS for all database operations")
 
 class Team(Base):
     __tablename__ = 'teams'
@@ -74,5 +45,10 @@ class DraftHistory(Base):
     id = Column(String, primary_key=True, index=True)
     data = Column(JSONB) 
 
-if os.getenv("DEPLOYMENT_ENVIRONMENT") != 'DEV':
+# Create all tables in PostgreSQL RDS
+try:
     Base.metadata.create_all(bind=engine)
+    logger.info("PostgreSQL tables created/verified successfully")
+except Exception as e:
+    logger.error(f"Error creating PostgreSQL tables: {e}")
+    raise

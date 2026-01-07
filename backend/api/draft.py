@@ -3,8 +3,7 @@ from pydantic import BaseModel as PydanticBaseModel
 from backend.models.draft import Draft
 from backend.models.draft_history import DraftHistory
 from backend.models.player_pool import PlayerPool
-from backend.data.sqlite.database import read_drafts
-from backend.data.memory import save_draft_state, load_draft_state
+from backend.data.postgresql.unified_db import read_drafts
 import logging
 from typing import List, Dict, Optional
 from backend.models.draft_teams import DraftTeams
@@ -14,9 +13,11 @@ import os
 import math
 
 api_url = os.getenv("API_URL")
-use_local_db = True
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
+logger.info("API using PostgreSQL RDS exclusively")
 
 class PlayerResponse(PydanticBaseModel):
     id: int
@@ -60,9 +61,11 @@ class DraftsResponse(PydanticBaseModel):
 
 @router.get('/draft', response_model=DraftResponse)
 async def get_draft():
+    """Get or create a new draft - PostgreSQL RDS only"""
+    logger.info("GET /draft - Using PostgreSQL RDS")
     print("Current working directory:", os.getcwd())
     try:
-        # Get Draft
+        # Get Draft from PostgreSQL
         draft = await Draft.get(id=None)
         if not draft:
             raise HTTPException(status_code=404, detail="Draft not found")
@@ -147,6 +150,8 @@ async def get_draft():
 
 @router.get("/drafts/{id}", response_model=DraftResponse)
 async def get_draft_by_id(id: str):
+    """Get draft by ID - PostgreSQL RDS only"""
+    logger.info(f"GET /drafts/{id} - Using PostgreSQL RDS")
     draft = await Draft.get(id=id.lower())
     if not draft:
         raise HTTPException(status_code=404, detail="Draft not found")
@@ -216,22 +221,17 @@ async def get_draft_by_id(id: str):
 
 @router.post("/drafts/{draft_id}/resume")
 async def resume_draft(draft_id: str):
-    """Resume an incomplete draft - checks memory first, then database"""
+    """
+    Resume an incomplete draft - PostgreSQL RDS only.
+    """
+    logger.info(f"POST /drafts/{draft_id}/resume - Using PostgreSQL RDS")
     try:
-        # First try to load from memory
-        memory_state = load_draft_state(draft_id.lower())
-        
-        if memory_state:
-            logging.info(f"Loaded draft {draft_id} from memory")
-            # Reconstruct draft from memory state
-            draft = Draft.from_dict(memory_state)
-        else:
-            logging.info(f"Draft {draft_id} not in memory, loading from backend.data.ase")
-            # Fall back to database
-            draft = await Draft.get(draft_id.lower())
+        # Load from PostgreSQL RDS only
+        logging.info(f"Loading draft {draft_id} from PostgreSQL RDS")
+        draft = await Draft.get(draft_id.lower())
         
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found")
+            raise HTTPException(status_code=404, detail="Draft not found in PostgreSQL RDS")
         
         if draft.is_complete:
             raise HTTPException(status_code=400, detail="Draft is already complete")
@@ -243,14 +243,12 @@ async def resume_draft(draft_id: str):
         num_teams = len(draft.teams.teams)
         next_round = math.ceil(next_pick / num_teams)
         
-        # Save current state to memory before resuming
-        save_draft_state(draft_id.lower(), draft.model_dump(by_alias=True))
-        
         return {
             "draft_id": draft.id,
             "current_round": next_round,
             "current_pick": next_pick,
-            "message": f"Draft ready to resume from Round {next_round}, Pick {next_pick}"
+            "message": f"Draft ready to resume from Round {next_round}, Pick {next_pick}",
+            "database": "PostgreSQL RDS"
         }
         
     except HTTPException:
@@ -261,10 +259,12 @@ async def resume_draft(draft_id: str):
 
 @router.get("/drafts/{draft_id}/teams/{team_name}/round/{round}/pick/{pick}/select-player", response_model=DraftResponse)
 async def select_player(draft_id: str, team_name: str, round: int, pick: int):
+    """Select player endpoint - PostgreSQL RDS only"""
+    logger.info(f"GET /drafts/{draft_id}/teams/{team_name}/round/{round}/pick/{pick}/select-player - Using PostgreSQL RDS")
     try:
         draft = await Draft.get(draft_id.lower())
         if not draft:
-            raise HTTPException(status_code=404, detail="Draft not found")
+            raise HTTPException(status_code=404, detail="Draft not found in PostgreSQL RDS")
         
         # Validate the team should be drafting at this pick
         try:
@@ -353,19 +353,12 @@ async def select_player(draft_id: str, team_name: str, round: int, pick: int):
         raise
     except Exception as e:
         logging.error(f"Error in select_player: {e}", exc_info=True)
-        
-        # Try to save draft state to memory on error
-        try:
-            if 'draft' in locals():
-                save_draft_state(draft_id.lower(), draft.model_dump(by_alias=True))
-                logging.info(f"Draft state saved to memory after error")
-        except Exception as save_error:
-            logging.error(f"Failed to save draft state after error: {save_error}", exc_info=True)
-        
         raise HTTPException(status_code=500, detail=f"Error selecting player: {str(e)}")
     
 @router.get("/drafts", response_model=List[DraftsResponse])
 async def get_drafts():
+    """Get all drafts - PostgreSQL RDS only"""
+    logger.info("GET /drafts - Using PostgreSQL RDS")
     drafts = read_drafts()
     if not drafts:
         raise HTTPException(status_code=404, detail="No drafts found")

@@ -7,7 +7,6 @@ from backend.utils.util import outfield_postion_set, pitcher_position_set, hitte
 from backend.data.postgresql.unified_db import read_player_pool, write_player_pool, get_latest_player_pool, player_pool_exists
 from uuid import uuid4
 import uuid
-import os
 import socket
 import time
 from functools import wraps
@@ -78,25 +77,31 @@ class PlayerPool(BaseModel):
 
     @classmethod
     async def get(cls, id: Optional[str]):
-        # First, try to get any existing player pool from database
+        """Get player pool from PostgreSQL RDS"""
+        logger.info("Loading player pool from PostgreSQL RDS")
+        # First, try to get any existing player pool from PostgreSQL RDS
         if id is None:
             # Check if any player pool exists in the database
             existing_pool = get_latest_player_pool()
             
             if existing_pool:
-                logger.info(f"Found existing player pool: {existing_pool['id']}")
+                logger.info(f"Found existing player pool in PostgreSQL RDS: {existing_pool['id']}")
                 return cls(**existing_pool)
             
             # No existing pool found, create new one
-            logger.info("No existing player pool found, creating new one...")
+            logger.info("No existing player pool found in PostgreSQL RDS, creating new one...")
             id = str(uuid.uuid4()).lower()
         
         fields = read_player_pool(id.lower())
         
         if not fields:
+            logger.info(f"Initializing new player pool {id}")
             player_pool = await initialize_player_pool(id=id.lower())
             fields = player_pool.model_dump(by_alias=True)
             write_player_pool(id.lower(), fields)
+            logger.info(f"Saved new player pool {id} to PostgreSQL RDS with {len(player_pool.players)} players")
+        else:
+            logger.info(f"Loaded existing player pool {id} from PostgreSQL RDS")
         
         return cls(**fields)
 
@@ -119,14 +124,16 @@ class PlayerPool(BaseModel):
         return {"players": [player.to_dict() for player in self.players]}
 
     def save(self):
-        """Save player pool to database"""
+        """Save player pool to PostgreSQL RDS"""
         data = self.model_dump(by_alias=True)
         write_player_pool(self.id, data)
+        logger.debug(f"Saved player pool {self.id} to PostgreSQL RDS")
 
 
 async def initialize_player_pool(id: str) -> PlayerPool:
     """
     Initialize player pool by fetching data from MLB Stats API.
+    Saves to PostgreSQL RDS.
     
     Args:
         id: Unique identifier for the player pool
@@ -134,7 +141,7 @@ async def initialize_player_pool(id: str) -> PlayerPool:
     Returns:
         PlayerPool instance with fetched players
     """
-    logger.info("Initializing player pool...")
+    logger.info("Initializing player pool from MLB Stats API...")
     
     # Use 2024 season (most recent completed season with full data)
     season = 2024
@@ -147,7 +154,7 @@ async def initialize_player_pool(id: str) -> PlayerPool:
             logger.warning("Returning empty player pool")
             return PlayerPool(id=id, players=[])
         
-        logger.info(f"Fetched {len(names_set)} unique player names")
+        logger.info(f"Fetched {len(names_set)} unique player names from MLB Stats API")
         
     except Exception as e:
         logger.error(f"Error fetching player names from MLB Stats API: {e}")
@@ -173,6 +180,7 @@ async def initialize_player_pool(id: str) -> PlayerPool:
     
     logger.info(f"Player position count map: {player_position_count_map}")
     logger.info(f"Player pool length: {len(player_pool)}")
+    logger.info("Player pool will be saved to PostgreSQL RDS")
     
     return PlayerPool(id=id, players=player_pool)
 
@@ -180,6 +188,7 @@ async def initialize_player_pool(id: str) -> PlayerPool:
 async def add_to_player_pool(names_set: set, player_pool: list, player_position_count_map: dict, season: int):
     """
     Add players to the pool by fetching their stats from MLB Stats API.
+    Each player is saved to PostgreSQL RDS individually.
     
     Args:
         names_set: Set of player names to fetch
@@ -318,7 +327,7 @@ async def add_to_player_pool(names_set: set, player_pool: list, player_position_
             
             name = player['fullName']
             
-            # Create and save player
+            # Create and save player to PostgreSQL RDS
             new_player = Player(
                 id=player_id,
                 name=name,
@@ -326,19 +335,19 @@ async def add_to_player_pool(names_set: set, player_pool: list, player_position_
                 team=team_abbr,
                 stats=player_statistics
             )
-            new_player.save()
+            new_player.save()  # Saves to PostgreSQL RDS
             player_pool.append(new_player)
             player_position_count_map[pos] = player_position_count_map.get(pos, 0) + 1
             
             processed += 1
             if processed % 10 == 0:
-                logger.info(f"Processed {processed}/{len(names_set)} players...")
+                logger.info(f"Processed {processed}/{len(names_set)} players... (saved to PostgreSQL RDS)")
             
         except Exception as e:
             logger.error(f"Error processing player {name}: {e}")
             continue
     
-    logger.info(f"Successfully processed {processed} players")
+    logger.info(f"Successfully processed and saved {processed} players to PostgreSQL RDS")
 
 
 async def get_players_from_statsapi(names_set: set, season: int) -> set:

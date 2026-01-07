@@ -8,10 +8,12 @@ logger.setLevel(logging.INFO)
 
 def handler(event, context):
     """
-    Lambda handler with RDS PostgreSQL support
+    Lambda handler with PostgreSQL RDS support ONLY.
+    SQLite support has been removed.
     """
     try:
         logger.info(f"Received event: {event.get('httpMethod')} {event.get('path')}")
+        logger.info("Using PostgreSQL RDS exclusively")
         
         # Handle OPTIONS requests directly for CORS preflight
         if event.get('httpMethod') == 'OPTIONS':
@@ -26,14 +28,20 @@ def handler(event, context):
                 'body': ''
             }
         
-        # Check which database to use
-        use_rds = os.getenv('USE_POSTGRESQL', 'false').lower() == 'true' or os.getenv('DB_SECRET_ARN')
-        logger.info(f"Using {'PostgreSQL/RDS' if use_rds else 'SQLite'} database")
+        # Verify PostgreSQL RDS credentials are available
+        db_secret_arn = os.getenv('DB_SECRET_ARN')
+        if not db_secret_arn:
+            logger.error("DB_SECRET_ARN not set - PostgreSQL RDS is required")
+            return {
+                'statusCode': 500,
+                'headers': {
+                    'Access-Control-Allow-Origin': '*',
+                    'Content-Type': 'application/json'
+                },
+                'body': '{"error": "Database configuration error", "message": "DB_SECRET_ARN not configured"}'
+            }
         
-        # If using SQLite, ensure database is downloaded from S3
-        if not use_rds:
-            from backend.data.sqlite.s3_sync import ensure_db_downloaded
-            ensure_db_downloaded()
+        logger.info(f"Using PostgreSQL RDS with secret: {db_secret_arn}")
         
         # Use Mangum to handle the request
         asgi_handler = Mangum(app, lifespan="off")

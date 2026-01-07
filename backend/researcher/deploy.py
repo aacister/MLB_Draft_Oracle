@@ -45,7 +45,7 @@ def main():
         capture_output=True
     )
     
-    region = os.environ.get("AWS_REGION", "us-east-2")
+    region = os.environ.get("AWS_REGION_NAME", "us-east-2")
     ecr_repository = "mlbdraftoracle-researcher"
     
     print(f"AWS Account: {account_id}")

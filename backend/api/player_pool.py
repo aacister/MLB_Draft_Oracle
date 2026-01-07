@@ -2,14 +2,18 @@ from fastapi import HTTPException
 from typing import List
 from pydantic import BaseModel as PydanticBaseModel
 from backend.models.player_pool import PlayerPool
-from backend.data.sqlite.database import player_pool_exists, get_latest_player_pool
+from backend.data.postgresql.unified_db import player_pool_exists, get_latest_player_pool
 from fastapi import APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import logging
 
 api_url = os.getenv("API_URL")
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
+logger.info("Player Pool API using PostgreSQL RDS exclusively")
 
 class PlayerResponse(PydanticBaseModel):
     id: int
@@ -27,9 +31,11 @@ class PlayerPoolResponse(PydanticBaseModel):
 
 @router.get("/player-pools/{id}", response_model=PlayerPoolResponse)
 async def get_player_pool(id: str):
+    """Get player pool by ID - PostgreSQL RDS only"""
+    logger.info(f"GET /player-pools/{id} - Using PostgreSQL RDS")
     player_pool = await PlayerPool.get(id=id.lower())
     if not player_pool:
-        raise HTTPException(status_code=404, detail="Player pool not found")
+        raise HTTPException(status_code=404, detail="Player pool not found in PostgreSQL RDS")
 
     return PlayerPoolResponse(
         id=player_pool.id,
@@ -47,9 +53,11 @@ async def get_player_pool(id: str):
 
 @router.get("/player-pool", response_model=PlayerPoolResponse)
 async def get_player_pool():
+    """Get latest player pool - PostgreSQL RDS only"""
+    logger.info("GET /player-pool - Using PostgreSQL RDS")
     player_pool = await PlayerPool.get(id=None)
     if not player_pool:
-        raise HTTPException(status_code=404, detail="Player pool not found")
+        raise HTTPException(status_code=404, detail="Player pool not found in PostgreSQL RDS")
 
     return PlayerPoolResponse(
         id=player_pool.id.lower(),
@@ -67,7 +75,8 @@ async def get_player_pool():
 
 @router.get("/player-pool/check", response_model=dict)
 async def check_player_pool():
-    """Check if a player pool exists in the database"""
+    """Check if a player pool exists - PostgreSQL RDS only"""
+    logger.info("GET /player-pool/check - Using PostgreSQL RDS")
     exists = player_pool_exists()
     pool_data = None
     
@@ -76,5 +85,6 @@ async def check_player_pool():
     
     return {
         "exists": exists,
-        "pool_id": pool_data.get('id') if pool_data else None
+        "pool_id": pool_data.get('id') if pool_data else None,
+        "database": "PostgreSQL RDS"
     }

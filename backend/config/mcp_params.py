@@ -26,7 +26,7 @@ print(f"Working directory: {working_directory}")
 
 drafter_mcp_server_params = [
     {
-        "command": "python",
+        "command": "/var/lang/bin/python3",
         "args": ["mcp_servers/draft_server.py"],
         "working_directory": "/app"
     }

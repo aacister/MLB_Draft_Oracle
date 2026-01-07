@@ -1,28 +1,22 @@
 """
-Unified database access layer that switches between SQLite and PostgreSQL
+Unified database access layer - PostgreSQL RDS ONLY
 Location: backend/data/postgresql/unified_db.py
 
-This module provides a unified interface for database operations that automatically
-routes to either SQLite or PostgreSQL based on the environment configuration.
+This module provides database operations exclusively through PostgreSQL RDS.
+SQLite code has been commented out but preserved for potential rollback.
 """
 import json
 import logging
 from typing import Dict, List, Optional
-from backend.config.settings import settings
 
 logger = logging.getLogger(__name__)
 
 
 def use_rds() -> bool:
     """
-    Check if we should use RDS PostgreSQL.
-    
-    Returns:
-        bool: True if RDS should be used, False for SQLite
+    Always return True - we only use PostgreSQL RDS now.
     """
-    should_use = settings.use_rds
-    logger.info(f"Database selection: {'PostgreSQL/RDS' if should_use else 'SQLite'}")
-    return should_use
+    return True
 
 
 # ============================================================================
@@ -30,49 +24,27 @@ def use_rds() -> bool:
 # ============================================================================
 
 def write_draft(id: str, data: dict) -> None:
-    """
-    Write draft data to database.
-    
-    Args:
-        id: Draft identifier
-        data: Draft data dictionary
-    """
-    if use_rds():
-        _write_draft_postgres(id, data)
-    else:
-        from backend.data.sqlite.database import write_draft as sqlite_write_draft
-        sqlite_write_draft(id, data)
+    """Write draft data to PostgreSQL RDS."""
+    _write_draft_postgres(id, data)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import write_draft as sqlite_write_draft
+    # sqlite_write_draft(id, data)
 
 
 def read_draft(id: str) -> Optional[dict]:
-    """
-    Read draft data from database.
-    
-    Args:
-        id: Draft identifier
-        
-    Returns:
-        Draft data dictionary or None if not found
-    """
-    if use_rds():
-        return _read_draft_postgres(id)
-    else:
-        from backend.data.sqlite.database import read_draft as sqlite_read_draft
-        return sqlite_read_draft(id)
+    """Read draft data from PostgreSQL RDS."""
+    return _read_draft_postgres(id)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import read_draft as sqlite_read_draft
+    # return sqlite_read_draft(id)
 
 
 def read_drafts() -> List[Optional[dict]]:
-    """
-    Read all drafts from database.
-    
-    Returns:
-        List of draft data dictionaries
-    """
-    if use_rds():
-        return _read_drafts_postgres()
-    else:
-        from backend.data.sqlite.database import read_drafts as sqlite_read_drafts
-        return sqlite_read_drafts()
+    """Read all drafts from PostgreSQL RDS."""
+    return _read_drafts_postgres()
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import read_drafts as sqlite_read_drafts
+    # return sqlite_read_drafts()
 
 
 # ============================================================================
@@ -80,35 +52,19 @@ def read_drafts() -> List[Optional[dict]]:
 # ============================================================================
 
 def write_team(name: str, team_dict: dict) -> None:
-    """
-    Write team data to database.
-    
-    Args:
-        name: Team name (used as identifier)
-        team_dict: Team data dictionary
-    """
-    if use_rds():
-        _write_team_postgres(name, team_dict)
-    else:
-        from backend.data.sqlite.database import write_team as sqlite_write_team
-        sqlite_write_team(name, team_dict)
+    """Write team data to PostgreSQL RDS."""
+    _write_team_postgres(name, team_dict)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import write_team as sqlite_write_team
+    # sqlite_write_team(name, team_dict)
 
 
 def read_team(name: str) -> Optional[dict]:
-    """
-    Read team data from database.
-    
-    Args:
-        name: Team name
-        
-    Returns:
-        Team data dictionary or None if not found
-    """
-    if use_rds():
-        return _read_team_postgres(name)
-    else:
-        from backend.data.sqlite.database import read_team as sqlite_read_team
-        return sqlite_read_team(name)
+    """Read team data from PostgreSQL RDS."""
+    return _read_team_postgres(name)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import read_team as sqlite_read_team
+    # return sqlite_read_team(name)
 
 
 # ============================================================================
@@ -116,63 +72,35 @@ def read_team(name: str) -> Optional[dict]:
 # ============================================================================
 
 def write_player_pool(id: str, player_pool_dict: dict) -> None:
-    """
-    Write player pool data to database.
-    
-    Args:
-        id: Player pool identifier
-        player_pool_dict: Player pool data dictionary or Pydantic model
-    """
-    if use_rds():
-        _write_player_pool_postgres(id, player_pool_dict)
-    else:
-        from backend.data.sqlite.database import write_player_pool as sqlite_write_player_pool
-        sqlite_write_player_pool(id, player_pool_dict)
+    """Write player pool data to PostgreSQL RDS."""
+    _write_player_pool_postgres(id, player_pool_dict)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import write_player_pool as sqlite_write_player_pool
+    # sqlite_write_player_pool(id, player_pool_dict)
 
 
 def read_player_pool(id: str) -> Optional[dict]:
-    """
-    Read player pool data from database.
-    
-    Args:
-        id: Player pool identifier
-        
-    Returns:
-        Player pool data dictionary or None if not found
-    """
-    if use_rds():
-        return _read_player_pool_postgres(id)
-    else:
-        from backend.data.sqlite.database import read_player_pool as sqlite_read_player_pool
-        return sqlite_read_player_pool(id)
+    """Read player pool data from PostgreSQL RDS."""
+    return _read_player_pool_postgres(id)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import read_player_pool as sqlite_read_player_pool
+    # return sqlite_read_player_pool(id)
 
 
 def get_latest_player_pool() -> Optional[dict]:
-    """
-    Get the most recently created player pool.
-    
-    Returns:
-        Player pool data dictionary or None if not found
-    """
-    if use_rds():
-        return _get_latest_player_pool_postgres()
-    else:
-        from backend.data.sqlite.database import get_latest_player_pool as sqlite_get_latest_player_pool
-        return sqlite_get_latest_player_pool()
+    """Get the most recently created player pool from PostgreSQL RDS."""
+    return _get_latest_player_pool_postgres()
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import get_latest_player_pool as sqlite_get_latest_player_pool
+    # return sqlite_get_latest_player_pool()
 
 
 def player_pool_exists() -> bool:
-    """
-    Check if any player pool exists in database.
-    
-    Returns:
-        True if at least one player pool exists, False otherwise
-    """
-    if use_rds():
-        return _player_pool_exists_postgres()
-    else:
-        from backend.data.sqlite.database import player_pool_exists as sqlite_player_pool_exists
-        return sqlite_player_pool_exists()
+    """Check if any player pool exists in PostgreSQL RDS."""
+    return _player_pool_exists_postgres()
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import player_pool_exists as sqlite_player_pool_exists
+    # return sqlite_player_pool_exists()
 
 
 # ============================================================================
@@ -180,35 +108,19 @@ def player_pool_exists() -> bool:
 # ============================================================================
 
 def write_player(id: int, player_dict: dict) -> None:
-    """
-    Write player data to database.
-    
-    Args:
-        id: Player identifier
-        player_dict: Player data dictionary
-    """
-    if use_rds():
-        _write_player_postgres(id, player_dict)
-    else:
-        from backend.data.sqlite.database import write_player as sqlite_write_player
-        sqlite_write_player(id, player_dict)
+    """Write player data to PostgreSQL RDS."""
+    _write_player_postgres(id, player_dict)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import write_player as sqlite_write_player
+    # sqlite_write_player(id, player_dict)
 
 
 def read_player(id: int) -> Optional[dict]:
-    """
-    Read player data from database.
-    
-    Args:
-        id: Player identifier
-        
-    Returns:
-        Player data dictionary or None if not found
-    """
-    if use_rds():
-        return _read_player_postgres(id)
-    else:
-        from backend.data.sqlite.database import read_player as sqlite_read_player
-        return sqlite_read_player(id)
+    """Read player data from PostgreSQL RDS."""
+    return _read_player_postgres(id)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import read_player as sqlite_read_player
+    # return sqlite_read_player(id)
 
 
 # ============================================================================
@@ -216,35 +128,19 @@ def read_player(id: int) -> Optional[dict]:
 # ============================================================================
 
 def write_draft_teams(id: str, draft_teams_dict) -> None:
-    """
-    Write draft teams data to database.
-    
-    Args:
-        id: Draft teams identifier (usually draft_id)
-        draft_teams_dict: Draft teams data (dict, list, or Pydantic model)
-    """
-    if use_rds():
-        _write_draft_teams_postgres(id, draft_teams_dict)
-    else:
-        from backend.data.sqlite.database import write_draft_teams as sqlite_write_draft_teams
-        sqlite_write_draft_teams(id, draft_teams_dict)
+    """Write draft teams data to PostgreSQL RDS."""
+    _write_draft_teams_postgres(id, draft_teams_dict)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import write_draft_teams as sqlite_write_draft_teams
+    # sqlite_write_draft_teams(id, draft_teams_dict)
 
 
 def read_draft_teams(id: str) -> Optional[dict]:
-    """
-    Read draft teams data from database.
-    
-    Args:
-        id: Draft teams identifier
-        
-    Returns:
-        Draft teams data dictionary or None if not found
-    """
-    if use_rds():
-        return _read_draft_teams_postgres(id)
-    else:
-        from backend.data.sqlite.database import read_draft_teams as sqlite_read_draft_teams
-        return sqlite_read_draft_teams(id)
+    """Read draft teams data from PostgreSQL RDS."""
+    return _read_draft_teams_postgres(id)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import read_draft_teams as sqlite_read_draft_teams
+    # return sqlite_read_draft_teams(id)
 
 
 # ============================================================================
@@ -252,39 +148,23 @@ def read_draft_teams(id: str) -> Optional[dict]:
 # ============================================================================
 
 def write_draft_history(id: str, data: dict) -> None:
-    """
-    Write draft history data to database.
-    
-    Args:
-        id: Draft history identifier (usually draft_id)
-        data: Draft history data dictionary
-    """
-    if use_rds():
-        _write_draft_history_postgres(id, data)
-    else:
-        from backend.data.sqlite.database import write_draft_history as sqlite_write_draft_history
-        sqlite_write_draft_history(id, data)
+    """Write draft history data to PostgreSQL RDS."""
+    _write_draft_history_postgres(id, data)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import write_draft_history as sqlite_write_draft_history
+    # sqlite_write_draft_history(id, data)
 
 
 def read_draft_history(id: str) -> Optional[dict]:
-    """
-    Read draft history data from database.
-    
-    Args:
-        id: Draft history identifier
-        
-    Returns:
-        Draft history data dictionary or None if not found
-    """
-    if use_rds():
-        return _read_draft_history_postgres(id)
-    else:
-        from backend.data.sqlite.database import read_draft_history as sqlite_read_draft_history
-        return sqlite_read_draft_history(id)
+    """Read draft history data from PostgreSQL RDS."""
+    return _read_draft_history_postgres(id)
+    # SQLite implementation commented out:
+    # from backend.data.sqlite.database import read_draft_history as sqlite_read_draft_history
+    # return sqlite_read_draft_history(id)
 
 
 # ============================================================================
-# POSTGRESQL IMPLEMENTATION (Private functions)
+# POSTGRESQL IMPLEMENTATION (Active)
 # ============================================================================
 
 def _write_draft_postgres(id: str, data: dict) -> None:
@@ -394,7 +274,6 @@ def _get_latest_player_pool_postgres() -> Optional[dict]:
     from backend.data.postgresql.models import PlayerPool
     
     with DatabaseSession() as session:
-        # Order by a timestamp column if you have one, otherwise by id
         result = session.query(PlayerPool).order_by(PlayerPool.id.desc()).first()
         if result:
             pool_data = json.loads(result.data)
@@ -421,7 +300,6 @@ def _write_player_postgres(id: int, player_dict: dict) -> None:
     
     with DatabaseSession() as session:
         json_data = json.dumps(player_dict, default=str)
-        # Convert int id to string for consistency
         insert_stmt = insert(Player).values(id=str(id), data=json_data)
         do_update_stmt = insert_stmt.on_conflict_do_update(
             index_elements=['id'], 
@@ -437,7 +315,6 @@ def _read_player_postgres(id: int) -> Optional[dict]:
     from backend.data.postgresql.models import Player
     
     with DatabaseSession() as session:
-        # Convert int id to string for query
         result = session.query(Player).filter_by(id=str(id)).first()
         if result:
             return json.loads(result.data)

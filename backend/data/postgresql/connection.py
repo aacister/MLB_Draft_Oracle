@@ -19,10 +19,11 @@ _db_credentials = None
 
 def get_db_credentials() -> dict:
     """
-    Retrieve database credentials from AWS Secrets Manager or environment variables.
+    Retrieve database credentials from AWS Secrets Manager.
+    PostgreSQL RDS ONLY - SQLite support removed.
     
     Returns:
-        dict: Database connection parameters
+        dict: Database connection parameters for PostgreSQL
     """
     global _db_credentials
     
@@ -30,71 +31,59 @@ def get_db_credentials() -> dict:
     if _db_credentials:
         return _db_credentials
     
-    if settings.is_dev:
-        # Local development: Use SQLite
-        _db_credentials = {
-            'engine': 'sqlite',
-            'database': settings.SQLITE_DB_PATH
-        }
-        logger.info(f"Using SQLite for local development at {settings.SQLITE_DB_PATH}")
-    else:
-        # AWS Lambda/Production: Use RDS PostgreSQL
-        secret_arn = os.getenv('DB_SECRET_ARN')
-        if not secret_arn:
-            raise ValueError("DB_SECRET_ARN environment variable not set in production")
+    # AWS Lambda/Production: Use RDS PostgreSQL ONLY
+    secret_arn = os.getenv('DB_SECRET_ARN')
+    if not secret_arn:
+        raise ValueError("DB_SECRET_ARN environment variable not set - PostgreSQL RDS is required")
+    
+    try:
+        # Create Secrets Manager client
+        region = settings.AWS_REGION if hasattr(settings, 'AWS_REGION') else 'us-east-2'
+        client = boto3.client('secretsmanager', region_name=region)
         
-        try:
-            # Create Secrets Manager client
-            region = settings.AWS_REGION if hasattr(settings, 'AWS_REGION') else 'us-east-2'
-            client = boto3.client('secretsmanager', region_name=region)
-            
-            # Retrieve secret
-            response = client.get_secret_value(SecretId=secret_arn)
-            secret = json.loads(response['SecretString'])
-            
-            _db_credentials = {
-                'engine': 'postgresql',
-                'host': secret['host'],
-                'port': secret.get('port', 5432),
-                'database': secret['dbname'],
-                'username': secret['username'],
-                'password': secret['password']
-            }
-            logger.info(f"Retrieved PostgreSQL credentials from Secrets Manager")
-            
-        except ClientError as e:
-            logger.error(f"Failed to retrieve database credentials: {e}")
-            raise
-        except KeyError as e:
-            logger.error(f"Missing required key in secret: {e}")
-            raise
+        # Retrieve secret
+        response = client.get_secret_value(SecretId=secret_arn)
+        secret = json.loads(response['SecretString'])
+        
+        _db_credentials = {
+            'engine': 'postgresql',
+            'host': secret['host'],
+            'port': secret.get('port', 5432),
+            'database': secret['dbname'],
+            'username': secret['username'],
+            'password': secret['password']
+        }
+        logger.info(f"Retrieved PostgreSQL credentials from Secrets Manager for host: {secret['host']}")
+        
+    except ClientError as e:
+        logger.error(f"Failed to retrieve database credentials from Secrets Manager: {e}")
+        raise
+    except KeyError as e:
+        logger.error(f"Missing required key in secret: {e}")
+        raise
     
     return _db_credentials
 
 
 def get_connection_string() -> str:
     """
-    Build database connection string based on environment.
+    Build PostgreSQL RDS connection string.
     
     Returns:
-        str: SQLAlchemy connection string
+        str: SQLAlchemy connection string for PostgreSQL
     """
     creds = get_db_credentials()
     
-    if creds['engine'] == 'sqlite':
-        # SQLite connection string
-        return f"sqlite:///{creds['database']}"
-    else:
-        # PostgreSQL connection string
-        return (
-            f"postgresql+psycopg2://{creds['username']}:{creds['password']}"
-            f"@{creds['host']}:{creds['port']}/{creds['database']}"
-        )
+    # PostgreSQL connection string ONLY
+    return (
+        f"postgresql+psycopg2://{creds['username']}:{creds['password']}"
+        f"@{creds['host']}:{creds['port']}/{creds['database']}"
+    )
 
 
 def get_engine():
     """
-    Get or create SQLAlchemy engine with appropriate configuration.
+    Get or create SQLAlchemy engine for PostgreSQL RDS.
     
     Returns:
         Engine: SQLAlchemy engine instance
@@ -105,37 +94,19 @@ def get_engine():
         return _engine
     
     connection_string = get_connection_string()
-    creds = get_db_credentials()
     
-    if creds['engine'] == 'sqlite':
-        # SQLite configuration
-        _engine = create_engine(
-            connection_string,
-            echo=False,
-            connect_args={'check_same_thread': False}
-        )
-        
-        # Enable foreign keys for SQLite
-        @event.listens_for(_engine, "connect")
-        def set_sqlite_pragma(dbapi_conn, connection_record):
-            cursor = dbapi_conn.cursor()
-            cursor.execute("PRAGMA foreign_keys=ON")
-            cursor.close()
-            
-        logger.info("Created SQLite engine")
-    else:
-        # PostgreSQL configuration for AWS Lambda
-        _engine = create_engine(
-            connection_string,
-            poolclass=NullPool,  # No connection pooling in Lambda
-            echo=False,
-            pool_pre_ping=True,  # Verify connections before using
-            connect_args={
-                'connect_timeout': 10,
-                'options': '-c statement_timeout=30000'  # 30 second timeout
-            }
-        )
-        logger.info("Created PostgreSQL engine for RDS")
+    # PostgreSQL configuration for AWS RDS
+    _engine = create_engine(
+        connection_string,
+        poolclass=NullPool,  # No connection pooling in Lambda
+        echo=False,
+        pool_pre_ping=True,  # Verify connections before using
+        connect_args={
+            'connect_timeout': 10,
+            'options': '-c statement_timeout=30000'  # 30 second timeout
+        }
+    )
+    logger.info("Created PostgreSQL engine for RDS")
     
     return _engine
 

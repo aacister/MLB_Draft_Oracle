@@ -15,7 +15,8 @@ from backend.mcp_clients.draft_client import read_team_roster_resource, read_dra
 from backend.utils.util import NO_OF_TEAMS, NO_OF_ROUNDS
 from backend.draft_agents.draft_name_generator.draft_name_generator_agent import get_draft_name_generator
 from backend.templates.templates import draft_name_generator_message
-from backend.data.memory import save_draft_state, load_draft_state
+# MEMORY STORAGE DISABLED - Using PostgreSQL RDS only
+# from backend.data.memory import save_draft_state, load_draft_state
 from agents import Runner
 import uuid
 import math
@@ -68,12 +69,8 @@ class Draft(BaseModel):
 
         import ast
         
-        # First try to load from memory
-        fields = load_draft_state(id.lower())
-        
-        # If not in memory, try database
-        if not fields:
-            fields = read_draft(id.lower())
+        # Load from PostgreSQL database only (memory storage disabled)
+        fields = read_draft(id.lower())
         
         if not fields:
             # Initialize teams first
@@ -91,9 +88,8 @@ class Draft(BaseModel):
                 "is_complete": False
             }
             
-            # Save to both database and memory
+            # Save to PostgreSQL database only
             write_draft(id.lower(), fields)
-            save_draft_state(id.lower(), fields)
             await DraftHistory.get(id.lower())
         
         # Ensure teams is properly loaded from fields
@@ -165,21 +161,14 @@ class Draft(BaseModel):
             raise ValueError("Player not found in player pool.")
     
     def save(self):
-        """Save draft to both database and memory"""
+        """Save draft to PostgreSQL database only (memory storage disabled)"""
         try:
             data = self.model_dump(by_alias=True)
             write_draft(self.id.lower(), data)
-            save_draft_state(self.id.lower(), data)
+            logging.info(f"Draft {self.id} saved to PostgreSQL")
         except Exception as e:
             logging.error(f"Error saving draft {self.id}: {e}", exc_info=True)
-            # Even if database save fails, try to save to memory
-            try:
-                data = self.model_dump(by_alias=True)
-                save_draft_state(self.id.lower(), data)
-                logging.info(f"Draft {self.id} saved to memory despite database error")
-            except Exception as mem_error:
-                logging.error(f"Failed to save draft to memory: {mem_error}", exc_info=True)
-                raise
+            raise
 
     def report(self) -> str:
         """Return a json string representing the draft."""
@@ -230,7 +219,7 @@ class Draft(BaseModel):
                 self.current_pick += 1
                 math.ceil(self.current_pick/NO_OF_TEAMS)
             
-            # Save to both database and memory after each pick
+            # Save to PostgreSQL database only (memory storage disabled)
             self.save()
             
             print(f"Team {team.name} drafted {selected_player.id}: {selected_player.name} ({selected_player.position} in round {round}.")
@@ -239,10 +228,10 @@ class Draft(BaseModel):
         except Exception as e:
             logging.error(f"An error occurred in draft_player: {e}", exc_info=True)
             
-            # Save draft state to memory on error
+            # Save draft state to database on error (memory storage disabled)
             try:
                 self.save()
-                logging.info(f"Draft state saved to memory after error")
+                logging.info(f"Draft state saved to database after error")
             except Exception as save_error:
                 logging.error(f"Failed to save draft state after error: {save_error}", exc_info=True)
             
@@ -272,10 +261,10 @@ class Draft(BaseModel):
         except Exception as e:
             logging.error(f"Error in run_draft: {e}", exc_info=True)
             
-            # Save draft state to memory on error
+            # Save draft state to database on error (memory storage disabled)
             try:
                 self.save()
-                logging.info(f"Draft state saved to memory after run_draft error")
+                logging.info(f"Draft state saved to database after run_draft error")
             except Exception as save_error:
                 logging.error(f"Failed to save draft state after run_draft error: {save_error}", exc_info=True)
             
@@ -309,10 +298,10 @@ class Draft(BaseModel):
             traceback.print_exc()
             logging.error("An error occurred in draft.run", exc_info=True)
             
-            # Save draft state to memory on error
+            # Save draft state to database on error (memory storage disabled)
             try:
                 self.save()
-                logging.info(f"Draft state saved to memory after draft.run error")
+                logging.info(f"Draft state saved to database after draft.run error")
             except Exception as save_error:
                 logging.error(f"Failed to save draft state after draft.run error: {save_error}", exc_info=True)
             

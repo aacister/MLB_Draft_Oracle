@@ -1,8 +1,9 @@
 from pydantic import BaseModel, Field
 from backend.models.player_stats import PlayerStatistics
 from backend.data.postgresql.unified_db import read_player, write_player
-#from backend.data.postgresql.main import read_postgres_player, write_postgres_player
-import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Player(BaseModel):
@@ -29,6 +30,8 @@ class Player(BaseModel):
     
     @classmethod
     def get(cls, id: int):
+        """Get player from PostgreSQL RDS"""
+        logger.debug(f"Loading player {id} from PostgreSQL RDS")
         fields = read_player(id)
         if not fields:
             fields = {
@@ -39,19 +42,21 @@ class Player(BaseModel):
                 "stats": {},
                 "is_drafted": False
             }
-            #if use_local_db:
             write_player(id, fields)
-    #        else:
-    #            write_postgres_player(id, fields)
+            logger.info(f"Initialized empty player {id} in PostgreSQL RDS")
         return cls.from_dict(fields)
     
     def save(self):
+        """Save player to PostgreSQL RDS"""
         data = self.model_dump(by_alias=True)
         write_player(self.id, data)
+        logger.debug(f"Saved player {self.id} to PostgreSQL RDS")
 
     def mark_drafted(self):
+        """Mark player as drafted and save to PostgreSQL RDS"""
         self.is_drafted = True
         self.save()
+        logger.info(f"Marked player {self.id} ({self.name}) as drafted in PostgreSQL RDS")
 
     def to_dict(self):
         return {
@@ -62,4 +67,3 @@ class Player(BaseModel):
             'stats': self.stats.to_dict() if hasattr(self.stats, 'to_dict') else vars(self.stats),
             'is_drafted': self.is_drafted
         }
-

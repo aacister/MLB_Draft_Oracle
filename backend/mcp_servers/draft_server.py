@@ -9,15 +9,18 @@ from backend.models.player_pool import PlayerPool
 from backend.templates.templates import drafter_instructions
 from mcp.server.fastmcp import FastMCP
 from typing import List
+import logging
 
 load_dotenv(override=True, dotenv_path=find_dotenv())
 
+logger = logging.getLogger(__name__)
+
 try:
-   backendmodels_AVAILABLE = True
-   print("Allbackendmodels imported successfully")
+    models_AVAILABLE = True
+    logger.info("All backend models imported successfully - Using PostgreSQL RDS")
 except Exception as e:
-    print(f"Warning: Could not importbackendmodels: {e}")
-    backendmodels_AVAILABLE = False
+    logger.error(f"Warning: Could not import backend models: {e}")
+    models_AVAILABLE = False
     
 mcp = FastMCP(
     name="draft_server",
@@ -43,12 +46,14 @@ async def draft_specific_player(draft_id, team_name, player_name, round_num, pic
             pick: The current pick number
             rationale: The rationale for the player selection and fit with the team's strategy
         """
-        if notbackend.models_AVAILABLE:
-            return f"Error: Databasebackend.models not available. Cannot draft player {player_name}."
+        if not models_AVAILABLE:
+            return f"Error: Database models not available. Cannot draft player {player_name}."
+        
+        logger.info(f"Drafting {player_name} for {team_name} in draft {draft_id} - PostgreSQL RDS")
         
         draft = await Draft.get(draft_id)
         if draft == None:
-            raise ValueError(f"Draft {draft_id} does not exist.")
+            raise ValueError(f"Draft {draft_id} does not exist in PostgreSQL RDS.")
         
         # Ensure player_pool is initialized
         if draft.player_pool is None:
@@ -57,10 +62,9 @@ async def draft_specific_player(draft_id, team_name, player_name, round_num, pic
         available_players = draft.get_undrafted_players()
         selected_player = next((p for p in available_players if p.name == player_name), None)
         if not selected_player:
-            print(f"Player {player_name} not found in available players.")
+            logger.warning(f"Player {player_name} not found in available players.")
             return { "result": f"Player {player_name} not found in available players."}
         
-        #selected_player = Player.from_dict(player_dict)
         team = Team.get(team_name)
         round_num = int(round_num)
         pick_num = int(pick_num)
@@ -71,40 +75,41 @@ async def draft_specific_player(draft_id, team_name, player_name, round_num, pic
             selected_player=selected_player,
             rationale=rationale
         )
+        logger.info(f"Successfully drafted {player_name} - saved to PostgreSQL RDS")
         return DraftSelectionData(player_id=selected_player.id, player_name=selected_player.name, reason=rationale)
 
     except Exception as e:
         import traceback
         traceback.print_exc()
+        logger.error(f"Error in draft_specific_player: {e}")
         return f"Error in draft_specific_player: {e}"
         
 
 @mcp.resource("draft://player_pool/{id}")
 async def read_draft_player_pool_resource(id: str) -> str:
-    if notbackend.models_AVAILABLE:
-        return "Error: Databasebackend.models not available."
+    if not models_AVAILABLE:
+        return "Error: Database models not available."
     draft = await Draft.get(id.lower())
     return draft.get_draft_player_pool()
 
 @mcp.resource("draft://player_pool/{id}/available")
 async def read_draft_player_pool_available_resource(id: str) -> str:
-    if notbackend.models_AVAILABLE:
-        return "Error: Databasebackend.models not available."
+    if not models_AVAILABLE:
+        return "Error: Database models not available."
     draft = await Draft.get(id.lower())
     return draft.get_undrafted_players()
 
 @mcp.resource("draft://team_roster/{id}/{team_name}")
 async def read_draft_team_roster_resource(id: str, team_name: str) -> str:
-    if notbackend.models_AVAILABLE:
-        return "Error: Databasebackend.models not available."
-    print("here")
+    if not models_AVAILABLE:
+        return "Error: Database models not available."
+    logger.info(f"Reading team roster for {team_name} in draft {id} from PostgreSQL RDS")
     draft = await Draft.get(id.lower())
-    print("Found draft.")
     return draft.get_team_roster(team_name)
 
 @mcp.resource("draft://draft_order/{id}/round/{round}")
 async def get_draft_order(id: str, round: int) -> List[Team]:
-    if notbackend.models_AVAILABLE:
+    if not models_AVAILABLE:
         return []
     draft = await Draft.get(id.lower())
     return draft.get_draft_order(round)
@@ -112,11 +117,11 @@ async def get_draft_order(id: str, round: int) -> List[Team]:
 
 @mcp.resource("draft://history/{id}")
 async def read_draft_history_resource(id: str) -> str:
-    if notbackend.models_AVAILABLE:
-        return "Error: Databasebackend.models not available."
+    if not models_AVAILABLE:
+        return "Error: Database models not available."
     draft = await Draft.get(id.lower())
     return await DraftHistory.get(draft.id)
     
 if __name__ == "__main__":
-    print("Starting MCP draft server...")
+    logger.info("Starting MCP draft server with PostgreSQL RDS...")
     mcp.run(transport='stdio')

@@ -13,10 +13,11 @@ from backend.mcp_clients.draft_client import get_draft_tools, read_team_roster_r
 from backend.mcp_clients.knowledgebase_client import get_knowledgebase_tools
 from backend.draft_agents.research_agents.researcher_tool import get_researcher_tool, get_researcher
 import math
-import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 MAX_TURNS = 15
-use_local_db = True
 
 class TeamContext(BaseModel):
     draft_id: str
@@ -50,6 +51,8 @@ class Team(BaseModel):
 
     @classmethod
     def get(cls, name: str):
+        """Get team from PostgreSQL RDS"""
+        logger.info(f"Loading team {name} from PostgreSQL RDS")
         fields = read_team(name.lower())
         if not fields:
             fields = {
@@ -59,6 +62,7 @@ class Team(BaseModel):
                 "drafted_players": []
             }
             write_team(name, fields)
+            logger.info(f"Initialized empty team {name} in PostgreSQL RDS")
         return cls.from_dict(fields)
 
     def get_needed_positions(self) -> set:
@@ -68,7 +72,9 @@ class Team(BaseModel):
         return self.strategy
     
     def save(self):
+        """Save team to PostgreSQL RDS"""
         write_team(self.name.lower(), self.to_dict())
+        logger.debug(f"Saved team {self.name} to PostgreSQL RDS")
 
     def get_roster(self) -> Dict[str, Optional[Player]]:
         return self.roster
@@ -91,7 +97,7 @@ class Team(BaseModel):
     async def research_test(self):
         research_question = "What's the latest news in fantasy baseball?"
         async with AsyncExitStack() as stack:
-            researcher_mcp_servers = [await stack.enter_async_context(MCPServerStdio(params=params, client_session_timeout=30)) for params in researcher_mcp_server_params]
+            researcher_mcp_servers = [await stack.enter_async_context(MCPServerStdio(params=params)) for params in researcher_mcp_server_params]
             if not researcher_mcp_servers:
                 raise Exception("Failed to initialize MCP server: researcher_mcp_servers.")
             researcher = await get_researcher(researcher_mcp_servers)
@@ -100,12 +106,14 @@ class Team(BaseModel):
                 print(result.final_output)
 
     async def select_player(self, draft, round: int, pick: int) -> str:
+        """Select player for team - saves to PostgreSQL RDS"""
+        logger.info(f"Team {self.name} selecting player in Round {round}, Pick {pick}")
         if draft.is_complete:
             return "Draft is complete"
         with trace(f"{self.name}-drafting Round: {round} Pick: {pick}"):
             async with AsyncExitStack() as stack:
                 # Initialize drafter MCP server
-                drafter_mcp_servers = [await stack.enter_async_context(MCPServerStdio(params=params, cache_tools_list=False)) for params in drafter_mcp_server_params]
+                drafter_mcp_servers = [await stack.enter_async_context(MCPServerStdio(params=params)) for params in drafter_mcp_server_params]
                 if not drafter_mcp_servers:
                     raise Exception("Failed to initialize MCP server: drafter_mcp_servers.")
                 
@@ -113,12 +121,6 @@ class Team(BaseModel):
                 researcher_mcp_servers = [await stack.enter_async_context(MCPServerStdio(params=params)) for params in researcher_mcp_server_params]
                 if not researcher_mcp_servers:
                     raise Exception("Failed to initialize MCP server: researcher_mcp_servers.")
-                
-                # Initialize knowledge base MCP server
-                # knowledgebase_mcp_servers = [await stack.enter_async_context(MCPServerStdio(params=params)) for params in knowledgebase_mcp_server_params]
-                # if not knowledgebase_mcp_servers:
-                #     print("Warning: Failed to initialize knowledge base MCP server. Continuing without it.")
-                #     knowledgebase_mcp_servers = []
                 
                 strategy = self.get_strategy()
 
@@ -135,19 +137,9 @@ class Team(BaseModel):
                 # Create drafter agent
                 drafter_agent = await self._create_agent(agent_name="Drafter", mcp_servers=drafter_mcp_servers, tools=draft_tools, handoffs=[], instructions=drafter_message)
                 
-                # Create researcher agent with web search and knowledge base tools
+                # Create researcher agent with web search tools
                 research_tool = await get_researcher_tool(researcher_mcp_servers)
                 research_tools = [research_tool]
-                
-                # Add knowledge base tools if available
-                # if knowledgebase_mcp_servers:
-                #     try:
-                #         # kb_tools = await get_knowledgebase_tools()
-                #         # research_tools.extend(kb_tools)
-                #         # print(f"Added {len(kb_tools)} knowledge base tools to researcher")
-                #         pass
-                #     except Exception as e:
-                #         print(f"Warning: Could not load knowledge base tools: {e}")
                 
                 research_agent = await self._create_agent(agent_name="Researcher", mcp_servers=researcher_mcp_servers, tools=research_tools, handoffs=[], instructions=researcher_message)
                 
@@ -161,7 +153,7 @@ class Team(BaseModel):
                     max_turns=MAX_TURNS
                 )
                 
-                print(f"Researcher output: {researcher_result.final_output}")
+                logger.info(f"Researcher output: {researcher_result.final_output}")
                 
                 # Then run the drafter with the researcher's output
                 drafter_result = await Runner.run(
@@ -172,8 +164,8 @@ class Team(BaseModel):
                 )
                 
                 roster_with_selected_player = await read_team_roster_resource(draft.id.lower(), self.name.lower())
-                print(f"Team {self.name} roster: {roster_with_selected_player}")
-                print(f"Drafter output: {drafter_result.final_output}")
+                logger.info(f"Team {self.name} roster updated in PostgreSQL RDS: {roster_with_selected_player}")
+                logger.info(f"Drafter output: {drafter_result.final_output}")
                 
                 return str(drafter_result.final_output)
             
