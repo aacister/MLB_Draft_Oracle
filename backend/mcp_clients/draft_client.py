@@ -4,12 +4,43 @@ from mcp.client.stdio import stdio_client
 from mcp import StdioServerParameters
 from agents import FunctionTool
 import json
+import os
 
+# CRITICAL: Build params with environment variables
+def get_drafter_params():
+    """Get drafter MCP server parameters with full environment"""
+    working_dir = "/var/task" if os.path.exists("/var/task") else os.getcwd()
+    python_cmd = "/var/lang/bin/python3" if os.path.exists("/var/task") else "python"
+    
+    # Build environment dict with all necessary variables
+    env = {
+        "PYTHONPATH": working_dir,
+        "PATH": os.environ.get("PATH", ""),
+        # Critical: Pass database credentials
+        "DB_SECRET_ARN": os.getenv("DB_SECRET_ARN", ""),
+        "AWS_REGION": os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-2")),
+        "AWS_REGION_NAME": os.getenv("AWS_REGION_NAME", os.getenv("AWS_REGION", "us-east-2")),
+        # AWS credentials (Lambda provides these via execution role)
+        "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID", ""),
+        "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY", ""),
+        "AWS_SESSION_TOKEN": os.getenv("AWS_SESSION_TOKEN", ""),
+        # Other keys
+        "BRAVE_API_KEY": os.getenv("BRAVE_API_KEY", ""),
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
+        "DEPLOYMENT_ENVIRONMENT": os.getenv("DEPLOYMENT_ENVIRONMENT", "LAMBDA" if os.path.exists("/var/task") else "DEV"),
+    }
+    
+    # Remove empty values
+    env = {k: v for k, v in env.items() if v}
+    
+    return StdioServerParameters(
+        command=python_cmd,
+        args=[f"{working_dir}/mcp_servers/draft_server.py"],
+        env=env
+    )
 
-
-
-#params = StdioServerParameters(command="uv", args=["run", "draft_server.py"], env=None)
-params = StdioServerParameters(command="uv", args=["run", "mcp_servers/draft_server.py"])
+# Create params dynamically to include environment variables
+params = get_drafter_params()
 
 
 async def list_draft_tools():
@@ -24,7 +55,7 @@ async def call_draft_tool(tool_name, tool_args):
         async with mcp.ClientSession(*streams) as session:
             await session.initialize()
             result = await session.call_tool(tool_name, tool_args)
-            print(f"Draft Tool {tool_name}Result: {result}")
+            print(f"Draft Tool {tool_name} Result: {result}")
             return result
         
 async def read_team_roster_resource(id, team_name):
@@ -121,4 +152,3 @@ async def get_draft_tools():
         )
         openai_tools.append(openai_tool)
     return openai_tools
-

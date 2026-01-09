@@ -4,12 +4,43 @@ from mcp.client.stdio import stdio_client
 from mcp import StdioServerParameters
 from agents import FunctionTool
 import json
+import os
 
-params = StdioServerParameters(
-    command="python",
-    args=["mcp_servers/knowledgebase_server.py"],
-    env=None
-)
+def get_knowledgebase_params():
+    """Get knowledgebase MCP server parameters with full environment"""
+    working_dir = "/var/task" if os.path.exists("/var/task") else os.getcwd()
+    python_cmd = "/var/lang/bin/python3" if os.path.exists("/var/task") else "python"
+    
+    # Build environment dict with all necessary variables
+    env = {
+        "PYTHONPATH": working_dir,
+        "PATH": os.environ.get("PATH", ""),
+        # Critical: Pass database and AWS credentials
+        "DB_SECRET_ARN": os.getenv("DB_SECRET_ARN", ""),
+        "AWS_REGION": os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-2")),
+        "AWS_REGION_NAME": os.getenv("AWS_REGION_NAME", os.getenv("AWS_REGION", "us-east-2")),
+        "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID", ""),
+        "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY", ""),
+        "AWS_SESSION_TOKEN": os.getenv("AWS_SESSION_TOKEN", ""),
+        # Vector storage config
+        "VECTOR_BUCKET": os.getenv("VECTOR_BUCKET", ""),
+        "SAGEMAKER_ENDPOINT": os.getenv("SAGEMAKER_ENDPOINT", ""),
+        # Other keys
+        "BRAVE_API_KEY": os.getenv("BRAVE_API_KEY", ""),
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
+        "DEPLOYMENT_ENVIRONMENT": os.getenv("DEPLOYMENT_ENVIRONMENT", "LAMBDA" if os.path.exists("/var/task") else "DEV"),
+    }
+    
+    # Remove empty values
+    env = {k: v for k, v in env.items() if v}
+    
+    return StdioServerParameters(
+        command=python_cmd,
+        args=[f"{working_dir}/mcp_servers/knowledgebase_server.py"],
+        env=env
+    )
+
+params = get_knowledgebase_params()
 
 
 async def list_knowledgebase_tools():
@@ -46,14 +77,12 @@ def set_additional_properties_false(schema, defs=None, visited=None):
             schema["additionalProperties"] = False
             if "properties" in schema:
                 for key, prop in list(schema["properties"].items()):
-                    # If property is a $ref, remove all other keys except $ref
                     if isinstance(prop, dict) and "$ref" in prop:
                         ref_val = prop["$ref"]
                         schema["properties"][key] = {"$ref": ref_val}
                         set_additional_properties_false(schema["properties"][key], defs, visited)
                     else:
                         set_additional_properties_false(prop, defs, visited)
-                # After all property processing, set required to match properties, but remove dynamic dicts
                 required_keys = list(schema["properties"].keys())
                 for key, prop in schema["properties"].items():
                     if (
@@ -66,14 +95,12 @@ def set_additional_properties_false(schema, defs=None, visited=None):
                 schema["required"] = required_keys
         elif schema.get("type") == "array" and "items" in schema:
             set_additional_properties_false(schema["items"], defs, visited)
-        # Handle $ref
         if "$ref" in schema and defs is not None:
             ref = schema["$ref"]
             if ref.startswith("#/$defs/"):
                 def_name = ref.split("#/$defs/")[-1]
                 if def_name in defs:
                     set_additional_properties_false(defs[def_name], defs, visited)
-    # Also process $defs at the root
     if defs is not None:
         for def_schema in defs.values():
             set_additional_properties_false(def_schema, defs, visited)

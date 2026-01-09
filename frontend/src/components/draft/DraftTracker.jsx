@@ -34,6 +34,7 @@ const DraftTracker = () => {
     fetchDrafts, 
     createDraft,
     draftPlayer,
+    draftPlayerAsync,
     resumeDraft
   } = useDrafts();
   
@@ -79,12 +80,23 @@ const DraftTracker = () => {
           setCurrentRound(roundNum);
           setCurrentPick(pickNum);
           
-          console.log(`Round ${roundNum}, Pick ${pickNum}: ${team_name} drafting (Pick index: ${pickNum - firstPickOfRound})`);
+          console.log(`Round ${roundNum}, Pick ${pickNum}: ${team_name} drafting`);
           updateStatus(`Round ${roundNum}, Pick ${pickNum}: ${team_name} is drafting ...`);
           
           try {
-            await draftPlayer(draft.draft_id, team_name, roundNum, pickNum);
+            // Use the async method with polling
+            const status = await draftPlayerAsync(
+              draft.draft_id,
+              team_name,
+              roundNum,
+              pickNum
+            );
+            
+            console.log('Pick completed:', status);
+            
+            // Refresh draft details after each pick
             await fetchDraftDetails(draft.draft_id);
+            
           } catch (error) {
             console.error(`Error drafting for ${team_name}:`, error);
             updateStatus(`Error: ${error.message}`);
@@ -98,6 +110,13 @@ const DraftTracker = () => {
       setRunningDraftId(null);
       setCurrentRound(null);
       setCurrentPick(null);
+      
+      // Cleanup completed tasks
+      try {
+        await draftService.cleanupDraftTasks(draft.draft_id);
+      } catch (err) {
+        console.warn('Failed to cleanup tasks:', err);
+      }
     }
   };
 

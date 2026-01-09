@@ -1,15 +1,75 @@
+#!/usr/bin/env python3
 import sys
 import os
-from dotenv import load_dotenv, find_dotenv
-from backend.models.draft import Draft
-from backend.models.teams import Team
-from backend.models.draft_history import DraftHistory
-from backend.models.draft_selection_data import DraftSelectionData
-from backend.models.player_pool import PlayerPool
-from backend.templates.templates import drafter_instructions
-from mcp.server.fastmcp import FastMCP
-from typing import List
+from pathlib import Path
+import json
+
+import asyncio
+from typing import Dict
+import uuid
+
+# ============================================================================
+# CRITICAL: Python Path Setup MUST happen before ANY other imports
+# ============================================================================
+# Get the directory where this script is located
+script_dir = Path(__file__).parent.absolute()
+# Get the parent directory (should be /var/task in Lambda)
+parent_dir = script_dir.parent.absolute()
+
+# Add to Python path
+sys.path.insert(0, str(parent_dir))
+sys.path.insert(0, os.getcwd())
+
+# For Lambda specifically
+if os.path.exists("/var/task"):
+    sys.path.insert(0, "/var/task")
+
+# Debug: Print Python path
+print(f"Python path for draft_server: {sys.path[:5]}", file=sys.stderr, flush=True)
+print(f"Script dir: {script_dir}", file=sys.stderr, flush=True)
+print(f"Parent dir: {parent_dir}", file=sys.stderr, flush=True)
+print(f"CWD: {os.getcwd()}", file=sys.stderr, flush=True)
+
+# ============================================================================
+# Now we can import other modules
+# ============================================================================
 import logging
+import time
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(levelname)s] %(asctime)s - %(name)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stderr)]
+)
+logger = logging.getLogger(__name__)
+
+start_time = time.time()
+
+logger.info("=== MCP Draft Server Starting ===")
+logger.info(f"Python path configured in {time.time() - start_time:.2f}s")
+
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(override=True, dotenv_path=find_dotenv())
+logger.info(f"Environment loaded in {time.time() - start_time:.2f}s")
+
+# Import backend modules
+try:
+    from backend.models.draft import Draft
+    from backend.models.teams import Team
+    from backend.models.draft_history import DraftHistory
+    from backend.models.draft_selection_data import DraftSelectionData
+    from backend.models.player_pool import PlayerPool
+    from backend.templates.templates import drafter_instructions
+    from mcp.server.fastmcp import FastMCP
+    from typing import List
+    
+    backendmodels_AVAILABLE = True
+    logger.info(f"Backend models imported successfully in {time.time() - start_time:.2f}s")
+except Exception as e:
+    logger.error(f"Failed to import backend models: {e}", exc_info=True)
+    backendmodels_AVAILABLE = False
+    raise  # Re-raise to see the full error
 
 load_dotenv(override=True, dotenv_path=find_dotenv())
 
@@ -32,28 +92,80 @@ mcp = FastMCP(
     Ensure only one successful call is made per round. Do NOT prompt the user with questions.
 """
     )
+draft_tasks: Dict[str, dict] = {}
 
 @mcp.tool()
-async def draft_specific_player(draft_id, team_name, player_name, round_num, pick_num, rationale) -> DraftSelectionData | str:
-    try:
-        """Draft a player for a team in the draft.
+async def draft_specific_player(draft_id, team_name, player_name, round_num, pick_num, rationale) -> str:
+    """
+    Draft a player for a team in the draft.
+    Returns immediately with a task ID, actual drafting happens in background.
+    """
+    if not backendmodels_AVAILABLE:
+        return json.dumps({
+            "status": "error",
+            "error": "Database models not available",
+            "task_id": None
+        })
+    
+    # Generate unique task ID
+    task_id = f"draft_{uuid.uuid4().hex[:8]}"
+    
+    # Store initial status
+    draft_tasks[task_id] = {
+        "status": "processing",
+        "message": f"Starting draft for {player_name}...",
+        "player_name": player_name,
+        "team_name": team_name,
+        "draft_id": draft_id,
+        "round": round_num,
+        "pick": pick_num
+    }
+    
+    logger.info(f"Task {task_id}: Initiating draft for {player_name}")
+    
+    # Start background task (non-blocking)
+    asyncio.create_task(
+        _process_draft_in_background(
+            task_id, draft_id, team_name, player_name, 
+            round_num, pick_num, rationale
+        )
+    )
+    
+    # Return immediately with task ID
+    return json.dumps({
+        "status": "accepted",
+        "task_id": task_id,
+        "message": f"Draft initiated for {player_name}",
+        "player_name": player_name
+    })
 
-        Args:
-            draft_id: The id of the draft
-            team_name: The name of the team drafting a player
-            player_name: The name of player of draft
-            round: The current draft round
-            pick: The current pick number
-            rationale: The rationale for the player selection and fit with the team's strategy
-        """
-        if not models_AVAILABLE:
-            return f"Error: Database models not available. Cannot draft player {player_name}."
+
+async def _process_draft_in_background(
+    task_id: str, 
+    draft_id: str, 
+    team_name: str, 
+    player_name: str, 
+    round_num: str, 
+    pick_num: str, 
+    rationale: str
+):
+    """Background task to actually process the draft"""
+    try:
+        logger.info(f"Task {task_id}: Processing draft in background")
         
-        logger.info(f"Drafting {player_name} for {team_name} in draft {draft_id} - PostgreSQL RDS")
+        # Update status
+        draft_tasks[task_id]["status"] = "drafting"
+        draft_tasks[task_id]["message"] = f"Drafting {player_name}..."
         
         draft = await Draft.get(draft_id)
         if draft == None:
-            raise ValueError(f"Draft {draft_id} does not exist in PostgreSQL RDS.")
+            draft_tasks[task_id] = {
+                "status": "error",
+                "error": f"Draft {draft_id} does not exist",
+                "player_id": None,
+                "player_name": player_name
+            }
+            return
         
         # Ensure player_pool is initialized
         if draft.player_pool is None:
@@ -61,13 +173,22 @@ async def draft_specific_player(draft_id, team_name, player_name, round_num, pic
         
         available_players = draft.get_undrafted_players()
         selected_player = next((p for p in available_players if p.name == player_name), None)
+        
         if not selected_player:
-            logger.warning(f"Player {player_name} not found in available players.")
-            return { "result": f"Player {player_name} not found in available players."}
+            logger.warning(f"Task {task_id}: Player {player_name} not found")
+            draft_tasks[task_id] = {
+                "status": "error",
+                "error": f"Player {player_name} not found in available players",
+                "player_id": None,
+                "player_name": player_name
+            }
+            return
         
         team = Team.get(team_name)
         round_num = int(round_num)
         pick_num = int(pick_num)
+        
+        # Actually draft the player
         await draft.draft_player(
             team=team,
             round=round_num,
@@ -75,14 +196,46 @@ async def draft_specific_player(draft_id, team_name, player_name, round_num, pic
             selected_player=selected_player,
             rationale=rationale
         )
-        logger.info(f"Successfully drafted {player_name} - saved to PostgreSQL RDS")
-        return DraftSelectionData(player_id=selected_player.id, player_name=selected_player.name, reason=rationale)
-
+        
+        logger.info(f"Task {task_id}: ✓ Successfully drafted {player_name}")
+        
+        # Update to completed status
+        draft_tasks[task_id] = {
+            "status": "completed",
+            "message": f"Successfully drafted {player_name}",
+            "player_id": selected_player.id,
+            "player_name": selected_player.name,
+            "reason": rationale
+        }
+        
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        logger.error(f"Error in draft_specific_player: {e}")
-        return f"Error in draft_specific_player: {e}"
+        logger.error(f"Task {task_id}: Error - {e}", exc_info=True)
+        draft_tasks[task_id] = {
+            "status": "error",
+            "error": str(e),
+            "player_id": None,
+            "player_name": player_name
+        }
+
+
+@mcp.tool()
+async def check_draft_status(task_id: str) -> str:
+    """
+    Check the status of a draft task.
+    
+    Args:
+        task_id: The task ID returned from draft_specific_player
+    
+    Returns:
+        JSON with current status of the draft task
+    """
+    if task_id not in draft_tasks:
+        return json.dumps({
+            "status": "not_found",
+            "error": f"Task {task_id} not found"
+        })
+    
+    return json.dumps(draft_tasks[task_id])
         
 
 @mcp.resource("draft://player_pool/{id}")

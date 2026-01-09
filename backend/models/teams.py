@@ -17,7 +17,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-MAX_TURNS = 15
+RESEARCHER_MAX_TURNS = 15
+DRAFTER_MAX_TURNS = 15
 
 class TeamContext(BaseModel):
     draft_id: str
@@ -150,7 +151,7 @@ class Team(BaseModel):
                     starting_agent=research_agent,
                     input=team_input(),
                     context=team_context,
-                    max_turns=MAX_TURNS
+                    max_turns=RESEARCHER_MAX_TURNS
                 )
                 
                 logger.info(f"Researcher output: {researcher_result.final_output}")
@@ -160,7 +161,7 @@ class Team(BaseModel):
                     starting_agent=drafter_agent,
                     input=f"Researcher recommendations: {researcher_result.final_output}",
                     context=team_context,
-                    max_turns=MAX_TURNS
+                    max_turns=DRAFTER_MAX_TURNS
                 )
                 
                 roster_with_selected_player = await read_team_roster_resource(draft.id.lower(), self.name.lower())

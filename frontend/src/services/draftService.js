@@ -37,6 +37,60 @@ class DraftService {
     return await response.json();
   }
 
+  async selectPlayerAsync(draftId, teamName, round, pick) {
+    const url = `${API_BASE_URL}/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}/round/${round}/pick/${pick}/select-player-async`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to start player selection: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  async getPickStatus(draftId, round, pick) {
+    const url = `${API_BASE_URL}/v1/drafts/${draftId}/round/${round}/pick/${pick}/status`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get pick status: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  async cleanupDraftTasks(draftId) {
+    const url = `${API_BASE_URL}/v1/drafts/${draftId}/tasks/cleanup`;
+    
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to cleanup tasks: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
   async selectPlayer(draftId, teamName, round, pick) {
     const url = `${API_BASE_URL}/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}/round/${round}/pick/${pick}/select-player`;
     

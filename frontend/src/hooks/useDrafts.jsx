@@ -70,6 +70,56 @@ export const useDrafts = () => {
     }
   };
 
+  const draftPlayerAsync = async (draft_id, team_name, round_num, current_pick) => {
+    try {
+      setError('');
+      
+      // Start the async draft
+      const result = await draftService.selectPlayerAsync(
+        draft_id,
+        team_name,
+        round_num,
+        current_pick
+      );
+      
+      console.log('Draft pick started:', result);
+      
+      // Poll for completion
+      const pollInterval = 2000; // Poll every 2 seconds
+      const maxAttempts = 60; // Maximum 2 minutes (60 * 2s)
+      let attempts = 0;
+      
+      while (attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+        
+        const status = await draftService.getPickStatus(
+          draft_id,
+          round_num,
+          current_pick
+        );
+        
+        console.log(`Poll attempt ${attempts + 1}:`, status);
+        
+        if (status.status === 'completed') {
+          console.log('Draft pick completed:', status.message);
+          return status;
+        }
+        
+        if (status.status === 'error') {
+          throw new Error(status.error || 'Draft pick failed');
+        }
+        
+        attempts++;
+      }
+      
+      throw new Error('Draft pick timed out after 2 minutes');
+      
+    } catch (err) {
+      setError(`Failed to draft player: ${err.message}`);
+      throw err;
+    }
+  };
+
   const draftPlayer = async (draft_id, team_name, round_num, current_pick) => {
     try {
       setError('');
@@ -115,6 +165,7 @@ export const useDrafts = () => {
     fetchDrafts,
     createDraft,
     draftPlayer,
+    draftPlayerAsync,
     resumeDraft
   };
 };

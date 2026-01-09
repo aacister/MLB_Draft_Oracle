@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from backend.api import draft, player_pool, players, teams, draft_history
+from backend.api import draft, draft_async, player_pool, players, teams, draft_history
 import os
 from dotenv import load_dotenv, find_dotenv
 import logging
@@ -33,6 +33,7 @@ app.add_middleware(
 
 
 app.include_router(draft.router, prefix="/v1")
+app.include_router(draft_async.router, prefix="/v1") 
 app.include_router(player_pool.router, prefix="/v1") 
 app.include_router(players.router, prefix="/v1") 
 app.include_router(teams.router, prefix="/v1") 
