@@ -74,45 +74,29 @@ export const useDrafts = () => {
     try {
       setError('');
       
-      // Start the async draft
-      const result = await draftService.selectPlayerAsync(
+      console.log(`Starting async draft for ${team_name} at R${round_num} P${current_pick}`);
+      
+      // Step 1: Start the async draft (returns immediately)
+      const startResult = await draftService.selectPlayerAsync(
         draft_id,
         team_name,
         round_num,
         current_pick
       );
       
-      console.log('Draft pick started:', result);
+      console.log('Draft pick started:', startResult);
       
-      // Poll for completion
-      const pollInterval = 2000; // Poll every 2 seconds
-      const maxAttempts = 60; // Maximum 2 minutes (60 * 2s)
-      let attempts = 0;
+      // Step 2: Poll for completion using draft history
+      const status = await draftService.waitForPickCompletion(
+        draft_id,
+        round_num,
+        current_pick,
+        120,  // maxAttempts (4 minutes total)
+        2000  // pollInterval (2 seconds)
+      );
       
-      while (attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
-        
-        const status = await draftService.getPickStatus(
-          draft_id,
-          round_num,
-          current_pick
-        );
-        
-        console.log(`Poll attempt ${attempts + 1}:`, status);
-        
-        if (status.status === 'completed') {
-          console.log('Draft pick completed:', status.message);
-          return status;
-        }
-        
-        if (status.status === 'error') {
-          throw new Error(status.error || 'Draft pick failed');
-        }
-        
-        attempts++;
-      }
-      
-      throw new Error('Draft pick timed out after 2 minutes');
+      console.log('Draft pick completed:', status);
+      return status;
       
     } catch (err) {
       setError(`Failed to draft player: ${err.message}`);
@@ -121,6 +105,10 @@ export const useDrafts = () => {
   };
 
   const draftPlayer = async (draft_id, team_name, round_num, current_pick) => {
+    /**
+     * DEPRECATED: This uses the synchronous endpoint which will timeout
+     * Use draftPlayerAsync instead
+     */
     try {
       setError('');
       await draftService.selectPlayer(draft_id, team_name, round_num, current_pick);

@@ -124,7 +124,7 @@ def get_session_factory():
         return _session_factory
     
     engine = get_engine()
-    _session_factory = sessionmaker(bind=engine, expire_on_commit=False)
+    _session_factory = sessionmaker(bind=engine, expire_on_commit=False, autocommit=False, autoflush=False)
     
     return _session_factory
 
@@ -157,21 +157,35 @@ def close_connections():
     logger.info("Closed all database connections")
 
 
-# Context manager for sessions
+# Context manager for sessions - FIXED VERSION
 class DatabaseSession:
-    """Context manager for database sessions with automatic cleanup."""
+    """Context manager for database sessions with automatic cleanup and explicit commit."""
     
     def __init__(self):
         self.session = None
     
     def __enter__(self) -> Session:
         self.session = get_session()
+        logger.debug(f"[DatabaseSession] Opened new session: {id(self.session)}")
         return self.session
     
     def __exit__(self, exc_type, exc_val, exc_tb):
         if self.session:
-            if exc_type is not None:
-                self.session.rollback()
-            else:
-                self.session.commit()
-            self.session.close()
+            try:
+                if exc_type is not None:
+                    # Exception occurred, rollback
+                    logger.warning(f"[DatabaseSession] Rolling back session {id(self.session)} due to exception")
+                    self.session.rollback()
+                else:
+                    # No exception, commit changes
+                    logger.debug(f"[DatabaseSession] Committing session {id(self.session)}")
+                    self.session.commit()
+            except Exception as e:
+                logger.error(f"[DatabaseSession] Error during commit/rollback: {e}")
+                try:
+                    self.session.rollback()
+                except:
+                    pass
+            finally:
+                logger.debug(f"[DatabaseSession] Closing session {id(self.session)}")
+                self.session.close()

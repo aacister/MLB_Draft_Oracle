@@ -1,173 +1,173 @@
-from fastapi import HTTPException, BackgroundTasks
+from fastapi import HTTPException
 from pydantic import BaseModel as PydanticBaseModel
 from backend.models.draft import Draft
 from backend.models.draft_history import DraftHistory
 from backend.models.teams import Team
 from fastapi import APIRouter
 import logging
-import asyncio
+import json
+import boto3
+import os
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Store for tracking async draft tasks
-draft_tasks = {}
+# Initialize Lambda client
+lambda_client = boto3.client('lambda', region_name=os.getenv('AWS_REGION', 'us-east-2'))
+
 
 class DraftTaskStatus(PydanticBaseModel):
-    status: str  # "processing", "completed", "error"
+    status: str  # "processing", "completed", "error", "not_found"
     message: str
     current_round: int = None
     current_pick: int = None
     error: str = None
+    player_id: int = None
+    player_name: str = None
+
 
 @router.post("/drafts/{draft_id}/teams/{team_name}/round/{round}/pick/{pick}/select-player-async")
 async def select_player_async(
     draft_id: str, 
     team_name: str, 
     round: int, 
-    pick: int,
-    background_tasks: BackgroundTasks
+    pick: int
 ):
-    """Start player selection asynchronously"""
-    logger.info(f"Starting async draft for {team_name} at R{round} P{pick}")
+    """
+    Start player selection asynchronously by invoking the worker Lambda.
+    Returns immediately, actual drafting happens in a separate Lambda invocation.
     
-    # Create task ID
-    task_id = f"{draft_id}-{round}-{pick}"
+    This approach:
+    1. Returns 200 immediately
+    2. Invokes mlb-draft-oracle-worker Lambda asynchronously
+    3. Worker Lambda runs the MCP agents without time limits
     
-    # Initialize task status
-    draft_tasks[task_id] = DraftTaskStatus(
-        status="processing",
-        message=f"Drafting for {team_name}...",
-        current_round=round,
-        current_pick=pick
-    )
+    Use /drafts/{draft_id}/round/{round}/pick/{pick}/status to check completion.
+    """
+    logger.info(f"[select_player_async] Received request for {team_name} at R{round} P{pick}")
     
-    # Start background task
-    background_tasks.add_task(
-        process_draft_pick,
-        draft_id,
-        team_name,
-        round,
-        pick,
-        task_id
-    )
-    
-    return {
-        "status": "accepted",
-        "message": f"Draft selection started for {team_name}",
-        "task_id": task_id,
-        "draft_id": draft_id,
-        "round": round,
-        "pick": pick
-    }
+    try:
+        # Validate draft exists
+        draft = await Draft.get(draft_id.lower())
+        if not draft:
+            raise HTTPException(status_code=404, detail="Draft not found")
+        
+        # Validate the team should be drafting at this pick
+        try:
+            expected_team = draft.get_team_for_pick(round, pick)
+            if expected_team.name.lower() != team_name.lower():
+                error_msg = f"Invalid draft order: {team_name} cannot draft at Round {round}, Pick {pick}. Expected: {expected_team.name}"
+                logger.error(error_msg)
+                raise HTTPException(status_code=400, detail=error_msg)
+        except ValueError as e:
+            logger.error(f"Invalid pick validation: {e}")
+            raise HTTPException(status_code=400, detail=str(e))
+        
+        team = next((t for t in draft.teams.teams if t.name.lower() == team_name.lower()), None)
+        if not team:
+            raise HTTPException(status_code=404, detail="Team not found in draft")
+        
+        if draft.is_complete:
+            raise HTTPException(status_code=400, detail="Draft is complete")
+        
+        logger.info(f"[select_player_async] Validation passed, invoking worker Lambda")
+        
+        # Prepare payload for worker Lambda
+        payload = {
+            "action": "execute_draft_pick",
+            "draft_id": draft_id,
+            "team_name": team_name,
+            "round": round,
+            "pick": pick
+        }
+        
+        # Get Lambda function name from environment or use default
+        worker_function_name = os.getenv('WORKER_LAMBDA_NAME', 'mlb-draft-oracle-worker')
+        
+        # Invoke worker Lambda asynchronously (Event invocation type)
+        try:
+            response = lambda_client.invoke(
+                FunctionName=worker_function_name,
+                InvocationType='Event',  # Asynchronous invocation
+                Payload=json.dumps(payload)
+            )
+            
+            logger.info(f"[select_player_async] Worker Lambda invoked: {response['StatusCode']}")
+            
+        except Exception as invoke_error:
+            logger.error(f"[select_player_async] Failed to invoke worker Lambda: {invoke_error}")
+            
+            # Fallback: If we can't invoke worker, log error but still return accepted
+            # The status endpoint will show "processing" indefinitely
+            logger.warning(f"[select_player_async] Worker invocation failed, draft may not complete")
+        
+        logger.info(f"[select_player_async] Returning immediately")
+        
+        return {
+            "status": "accepted",
+            "message": f"Draft selection started for {team_name}",
+            "draft_id": draft_id,
+            "team": team_name,
+            "round": round,
+            "pick": pick,
+            "note": "Poll /drafts/{draft_id}/round/{round}/pick/{pick}/status to check completion"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[select_player_async] Error starting async draft: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error starting draft: {str(e)}")
+
 
 @router.get("/drafts/{draft_id}/round/{round}/pick/{pick}/status")
 async def get_draft_pick_status(draft_id: str, round: int, pick: int):
-    """Check the status of a draft pick"""
-    task_id = f"{draft_id}-{round}-{pick}"
-    
-    if task_id not in draft_tasks:
-        # If task not found, check if pick has been completed
-        try:
-            history = await DraftHistory.get(draft_id.lower())
-            pick_item = next(
-                (item for item in history.items if item.round == round and item.pick == pick),
-                None
-            )
-            
-            if pick_item and pick_item.selection:
-                return DraftTaskStatus(
-                    status="completed",
-                    message=f"Drafted {pick_item.selection}",
-                    current_round=round,
-                    current_pick=pick
-                )
-        except Exception:
-            pass
-        
-        return DraftTaskStatus(
-            status="not_found",
-            message="Draft pick not found or not started"
-        )
-    
-    return draft_tasks[task_id]
-
-async def process_draft_pick(
-    draft_id: str,
-    team_name: str,
-    round: int,
-    pick: int,
-    task_id: str
-):
-    """Background task to process a draft pick"""
+    """
+    Check the status of a draft pick by looking at the draft history.
+    Returns completed status if the pick has been made.
+    """
     try:
-        logger.info(f"Processing draft pick: {task_id}")
-        
-        # Load draft
-        draft = await Draft.get(draft_id.lower())
-        if not draft:
-            raise ValueError(f"Draft {draft_id} not found")
-        
-        # Validate team
-        expected_team = draft.get_team_for_pick(round, pick)
-        if expected_team.name.lower() != team_name.lower():
-            raise ValueError(
-                f"Invalid draft order: {team_name} cannot draft at R{round} P{pick}. "
-                f"Expected: {expected_team.name}"
-            )
-        
-        team = next(
-            (t for t in draft.teams.teams if t.name.lower() == team_name.lower()),
-            None
-        )
-        if not team:
-            raise ValueError(f"Team {team_name} not found")
-        
-        # Update status
-        draft_tasks[task_id] = DraftTaskStatus(
-            status="processing",
-            message=f"{team_name} is selecting...",
-            current_round=round,
-            current_pick=pick
-        )
-        
-        # Execute the draft pick
-        await team.select_player(draft, round, pick)
-        
-        # Get the drafted player from history
         history = await DraftHistory.get(draft_id.lower())
         pick_item = next(
             (item for item in history.items if item.round == round and item.pick == pick),
             None
         )
         
-        # Update to completed
-        draft_tasks[task_id] = DraftTaskStatus(
-            status="completed",
-            message=f"Drafted {pick_item.selection if pick_item else 'player'}",
-            current_round=round,
-            current_pick=pick
-        )
+        if not pick_item:
+            return DraftTaskStatus(
+                status="not_found",
+                message="Draft pick not found"
+            )
         
-        logger.info(f"Successfully completed draft pick: {task_id}")
-        
+        if pick_item.selection:
+            return DraftTaskStatus(
+                status="completed",
+                message=f"Drafted {pick_item.selection}",
+                current_round=round,
+                current_pick=pick,
+                player_name=pick_item.selection
+            )
+        else:
+            return DraftTaskStatus(
+                status="processing",
+                message=f"Pick in progress for {pick_item.team}",
+                current_round=round,
+                current_pick=pick
+            )
+            
     except Exception as e:
-        logger.error(f"Error processing draft pick {task_id}: {e}", exc_info=True)
-        draft_tasks[task_id] = DraftTaskStatus(
+        logger.error(f"Error checking draft pick status: {e}", exc_info=True)
+        return DraftTaskStatus(
             status="error",
-            message="Draft pick failed",
-            current_round=round,
-            current_pick=pick,
+            message="Error checking status",
             error=str(e)
         )
 
+
 @router.delete("/drafts/{draft_id}/tasks/cleanup")
 async def cleanup_draft_tasks(draft_id: str):
-    """Clean up completed/errored tasks for a draft"""
-    removed = 0
-    for task_id in list(draft_tasks.keys()):
-        if task_id.startswith(draft_id) and draft_tasks[task_id].status in ["completed", "error"]:
-            del draft_tasks[task_id]
-            removed += 1
-    
-    return {"message": f"Cleaned up {removed} tasks"}
+    """
+    Cleanup endpoint (for compatibility).
+    With the new async approach, cleanup happens automatically in the MCP server.
+    """
+    return {"message": "Cleanup not needed with new async approach"}

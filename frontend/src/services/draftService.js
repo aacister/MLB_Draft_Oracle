@@ -38,6 +38,10 @@ class DraftService {
   }
 
   async selectPlayerAsync(draftId, teamName, round, pick) {
+    /**
+     * Start async player selection - returns immediately
+     * The actual drafting happens in the background via MCP server
+     */
     const url = `${API_BASE_URL}/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}/round/${round}/pick/${pick}/select-player-async`;
     
     const response = await fetch(url, {
@@ -56,6 +60,10 @@ class DraftService {
   }
 
   async getPickStatus(draftId, round, pick) {
+    /**
+     * Poll to check if a specific pick has been completed
+     * Checks the draft history to see if the selection field is filled
+     */
     const url = `${API_BASE_URL}/v1/drafts/${draftId}/round/${round}/pick/${pick}/status`;
     
     const response = await fetch(url, {
@@ -71,6 +79,35 @@ class DraftService {
     }
 
     return await response.json();
+  }
+
+  async waitForPickCompletion(draftId, round, pick, maxAttempts = 120, pollInterval = 2000) {
+    /**
+     * Poll until pick is completed or timeout
+     * maxAttempts * pollInterval = total timeout (default: 4 minutes)
+     */
+    console.log(`Waiting for pick completion: R${round} P${pick}`);
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+      
+      const status = await this.getPickStatus(draftId, round, pick);
+      
+      console.log(`Poll attempt ${attempt + 1}/${maxAttempts}:`, status);
+      
+      if (status.status === 'completed') {
+        console.log(`✓ Pick completed: ${status.player_name}`);
+        return status;
+      }
+      
+      if (status.status === 'error') {
+        throw new Error(status.error || 'Draft pick failed');
+      }
+      
+      // Continue polling if status is 'processing'
+    }
+    
+    throw new Error(`Draft pick timed out after ${maxAttempts * pollInterval / 1000} seconds`);
   }
 
   async cleanupDraftTasks(draftId) {
@@ -92,6 +129,10 @@ class DraftService {
   }
 
   async selectPlayer(draftId, teamName, round, pick) {
+    /**
+     * DEPRECATED: Use selectPlayerAsync + waitForPickCompletion instead
+     * This synchronous endpoint will likely timeout
+     */
     const url = `${API_BASE_URL}/v1/drafts/${draftId}/teams/${encodeURIComponent(teamName)}/round/${round}/pick/${pick}/select-player`;
     
     const response = await fetch(url, {

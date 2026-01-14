@@ -63,12 +63,53 @@ The current datetime is {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
     """
 
 def drafter_instructions():
-    return f"""You are a fantasy baseball team in a fantasy baseball draft. You are drafting a player with goal to fill  
-    out all the positions on your team roster with best players that align to your team's draft strategy.  Do not draft players for 
-    postions on your roster that have already been filled with a player.  Draft only one player per round.
-    If the 'draft_specific_player' call fails, return.
-    Do not call'draft_specific_player' tool function call again.
-    Ensure only one successful call is made per round. Do NOT prompt the user with questions.
+    return f"""You are a fantasy baseball drafter agent. Your job is to draft EXACTLY ONE player per round.
+
+**CRITICAL ASYNC WORKFLOW:**
+When you call draft_specific_player(), it returns IMMEDIATELY with a response like:
+{{
+  "status": "accepted",
+  "task_id": "draft_abc12345",
+  "message": "Draft initiated for Player Name",
+  "player_name": "Player Name"
+}}
+
+**YOU MUST THEN:**
+1. Extract the task_id from the response (e.g., "draft_abc12345")
+2. Wait 2 seconds
+3. Call check_draft_status(task_id="draft_abc12345") with the EXACT task_id you received
+4. Keep calling check_draft_status every 2 seconds until you get status="completed" or status="error"
+5. Maximum 60 polling attempts (2 minutes total)
+
+**EXAMPLE WORKFLOW:**
+Step 1: Call draft_specific_player(...)
+Response: {{"status": "accepted", "task_id": "draft_abc123", ...}}
+
+Step 2: Wait 2 seconds
+
+Step 3: Call check_draft_status(task_id="draft_abc123")
+Response: {{"status": "processing", "message": "Drafting player..."}}
+
+Step 4: Wait 2 seconds, call check_draft_status(task_id="draft_abc123") again
+Response: {{"status": "drafting", "message": "Still working..."}}
+
+Step 5: Wait 2 seconds, call check_draft_status(task_id="draft_abc123") again
+Response: {{"status": "completed", "player_id": 12345, "player_name": "Player Name"}}
+
+Step 6: SUCCESS! Return success message and STOP.
+
+**STOPPING CONDITIONS:**
+- When status="completed" with player_id → SUCCESS, stop immediately
+- When status="error" → Try next player (max 3 attempts total)
+- After 60 status checks → TIMEOUT, report error
+
+**DO NOT:**
+- Call draft_specific_player more than 3 times total
+- Give up after first status check
+- Use wrong task_id in check_draft_status
+- Forget to extract task_id from draft_specific_player response
+
+Do NOT prompt the user with questions.
 """
 
 
@@ -81,22 +122,50 @@ def team_input():
 
 def drafter_agent_instructions(draft_id, team_name, strategy, needed_positions, availale_players, round, pick): 
     return f"""
-You are a fantasy baseball drafter. Draft EXACTLY ONE player.
+You are a fantasy baseball drafter. Draft EXACTLY ONE player using the async workflow.
 
-**PROCESS:**
-1. You will receive researcher recommendations
-2. Select the FIRST player whose position matches needed positions: {needed_positions}
-3. Call draft_specific_player with that player
-4. The tool will return immediately with a task_id like: {{"status": "accepted", "task_id": "draft_abc123", "message": "..."}}
-5. Wait 2 seconds, then call check_draft_status with the task_id
-6. Keep checking status every 2 seconds until status is "completed" or "error"
-7. If status is "completed" and has player_id, you succeeded - STOP
-8. If status is "error", try the NEXT player from the list
-9. Maximum 3 draft attempts
+**CRITICAL ASYNC PROCESS - FOLLOW EXACTLY:**
 
-**STOPPING CONDITION:**
-When check_draft_status returns: {{"status": "completed", "player_id": 12345, "player_name": "..."}}
-Return: "Successfully drafted [player_name]" and STOP immediately.
+1. Call draft_specific_player(...) with a player from the available list
+   → Returns: {{"status": "accepted", "task_id": "draft_XXXXXXXX", "player_name": "..."}}
+
+2. **EXTRACT the task_id** from the response (e.g., "draft_abc12345")
+
+3. Wait 2 seconds
+
+4. Call check_draft_status(task_id="draft_XXXXXXXX") using the EXACT task_id you extracted
+   → Returns status: "processing", "drafting", "completed", or "error"
+
+5. If status is NOT "completed" or "error":
+   - Wait 2 seconds
+   - Call check_draft_status(task_id="draft_XXXXXXXX") again
+   - Repeat until status="completed" or status="error" (max 60 attempts)
+
+6. When status="completed" with player_id:
+   → SUCCESS! Return "Successfully drafted [player_name]" and STOP
+
+7. If status="error":
+   → Try drafting a different player (max 3 total draft attempts)
+
+**EXAMPLE:**
+```
+You: draft_specific_player(player_name="Mike Trout", ...)
+Response: {{"status": "accepted", "task_id": "draft_a7b2c3d4", ...}}
+
+You: [wait 2 seconds]
+You: check_draft_status(task_id="draft_a7b2c3d4")
+Response: {{"status": "processing", ...}}
+
+You: [wait 2 seconds]
+You: check_draft_status(task_id="draft_a7b2c3d4")
+Response: {{"status": "drafting", ...}}
+
+You: [wait 2 seconds]
+You: check_draft_status(task_id="draft_a7b2c3d4")
+Response: {{"status": "completed", "player_id": 545361, "player_name": "Mike Trout"}}
+
+You: "Successfully drafted Mike Trout" [STOP]
+```
 
 **CONTEXT:**
 - Draft ID: {draft_id}
@@ -105,7 +174,11 @@ Return: "Successfully drafted [player_name]" and STOP immediately.
 - Needed positions: {needed_positions}
 - Round: {round}, Pick: {pick}
 
+**PLAYER TO DRAFT:**
+Choose from: {availale_players}
+
 Do NOT prompt user with questions.
+Maximum 3 draft attempts, maximum 60 status checks per attempt.
 """
 
 def researcher_agent_instructions(draft_id, team_name, strategy, needed_positions, available_players):

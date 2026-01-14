@@ -384,3 +384,110 @@ def _read_draft_history_postgres(id: str) -> Optional[dict]:
         if result:
             return json.loads(result.data)
         return None
+
+# ============================================================================
+# DRAFT TASK OPERATIONS
+# ============================================================================
+
+def write_draft_task(task_id: str, data: dict) -> None:
+    """Write draft task to PostgreSQL RDS with robust error handling."""
+    _write_draft_task_postgres(task_id, data)
+
+
+def read_draft_task(task_id: str) -> Optional[dict]:
+    """Read draft task from PostgreSQL RDS with robust error handling."""
+    return _read_draft_task_postgres(task_id)
+
+
+def delete_draft_task(task_id: str) -> bool:
+    """Delete draft task from PostgreSQL RDS."""
+    return _delete_draft_task_postgres(task_id)
+
+
+# ============================================================================
+# POSTGRESQL IMPLEMENTATION (Active) - ROBUST VERSION
+# ============================================================================
+
+def _write_draft_task_postgres(task_id: str, data: dict) -> None:
+    """Write draft task to PostgreSQL with explicit commit and verification"""
+    from backend.data.postgresql.connection import DatabaseSession
+    from backend.data.postgresql.models import DraftTask
+    from sqlalchemy.dialects.postgresql import insert
+    
+    logger.info(f"[_write_draft_task_postgres] Writing task {task_id}")
+    
+    session = None
+    try:
+        with DatabaseSession() as session:
+            json_data = json.dumps(data, default=str)
+            
+            insert_stmt = insert(DraftTask).values(task_id=task_id, data=json_data)
+            do_update_stmt = insert_stmt.on_conflict_do_update(
+                index_elements=['task_id'], 
+                set_=dict(data=json_data)
+            )
+            
+            session.execute(do_update_stmt)
+            session.commit()  # Explicit commit
+            
+            logger.info(f"[_write_draft_task_postgres] ✓ Committed task {task_id} to PostgreSQL")
+            
+            # Verify write in same session
+            verify_query = session.query(DraftTask).filter_by(task_id=task_id).first()
+            if verify_query:
+                logger.info(f"[_write_draft_task_postgres] ✓ Verified task {task_id} in database")
+            else:
+                logger.error(f"[_write_draft_task_postgres] ✗ Task {task_id} NOT FOUND after commit!")
+                
+    except Exception as e:
+        logger.error(f"[_write_draft_task_postgres] Error writing task {task_id}: {e}", exc_info=True)
+        if session:
+            session.rollback()
+        raise
+
+
+def _read_draft_task_postgres(task_id: str) -> Optional[dict]:
+    """Read draft task from PostgreSQL with robust error handling"""
+    from backend.data.postgresql.connection import DatabaseSession
+    from backend.data.postgresql.models import DraftTask
+    
+    logger.info(f"[_read_draft_task_postgres] Reading task {task_id}")
+    
+    try:
+        with DatabaseSession() as session:
+            result = session.query(DraftTask).filter_by(task_id=task_id).first()
+            
+            if result:
+                logger.info(f"[_read_draft_task_postgres] ✓ Found task {task_id}")
+                data = json.loads(result.data)
+                logger.info(f"[_read_draft_task_postgres] Task {task_id} status: {data.get('status')}")
+                return data
+            else:
+                logger.warning(f"[_read_draft_task_postgres] ✗ Task {task_id} not found in database")
+                
+                # Debug: List all tasks
+                all_tasks = session.query(DraftTask).all()
+                logger.info(f"[_read_draft_task_postgres] Total tasks in database: {len(all_tasks)}")
+                if all_tasks:
+                    logger.info(f"[_read_draft_task_postgres] Available task_ids: {[t.task_id for t in all_tasks[:5]]}")
+                
+                return None
+                
+    except Exception as e:
+        logger.error(f"[_read_draft_task_postgres] Error reading task {task_id}: {e}", exc_info=True)
+        return None
+
+
+def _delete_draft_task_postgres(task_id: str) -> bool:
+    """Delete draft task from PostgreSQL"""
+    from backend.data.postgresql.connection import DatabaseSession
+    from backend.data.postgresql.models import DraftTask
+    
+    try:
+        with DatabaseSession() as session:
+            result = session.query(DraftTask).filter_by(task_id=task_id).delete()
+            session.commit()
+            return result > 0
+    except Exception as e:
+        logger.error(f"[_delete_draft_task_postgres] Error deleting task {task_id}: {e}", exc_info=True)
+        return False

@@ -45,6 +45,11 @@ class DraftHistory(Base):
     id = Column(String, primary_key=True, index=True)
     data = Column(JSONB) 
 
+class DraftTask(Base):
+    __tablename__ = 'draft_tasks'
+    task_id = Column(String, primary_key=True, index=True)
+    data = Column(JSONB)
+
 # Create all tables in PostgreSQL RDS
 try:
     Base.metadata.create_all(bind=engine)
