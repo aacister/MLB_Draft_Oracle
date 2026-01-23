@@ -47,7 +47,8 @@ async def list_knowledgebase_tools():
     """List all available tools from the knowledge base MCP server."""
     async with stdio_client(params) as streams:
         async with mcp.ClientSession(*streams) as session:
-            await session.initialize()
+            session.request_timeout = 120
+            await session.initialize(timeout=120)
             tools_result = await session.list_tools()
             return tools_result.tools
 
@@ -56,6 +57,7 @@ async def call_knowledgebase_tool(tool_name, tool_args):
     """Call a specific tool from the knowledge base MCP server."""
     async with stdio_client(params) as streams:
         async with mcp.ClientSession(*streams) as session:
+            session.request_timeout = 120
             await session.initialize()
             result = await session.call_tool(tool_name, tool_args)
             print(f"Knowledge Base Tool {tool_name} Result: {result}")

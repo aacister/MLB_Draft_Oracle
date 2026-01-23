@@ -77,7 +77,7 @@ else:
     researcher_mcp_server_params = [
         {
             "command": "npx",
-            "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+            "args": ["-y", "@brave/brave-search-mcp-server"],
             "env": brave_env,
             "working_directory": WORKING_DIR
         }

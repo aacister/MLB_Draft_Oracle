@@ -18,4 +18,4 @@ boto3
 tenacity
 mangum
 alembic==1.12.1
-
+run-mcp-servers-with-aws-lambda

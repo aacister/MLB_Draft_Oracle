@@ -1,0 +1,37 @@
+# Use AWS Lambda Python base image
+FROM public.ecr.aws/lambda/python:3.11
+
+# Install Node.js 16 (compatible with Amazon Linux 2 glibc)
+RUN yum install -y tar gzip && \
+    curl -fsSL https://rpm.nodesource.com/setup_16.x | bash - && \
+    yum install -y nodejs && \
+    yum clean all
+
+# Set working directory
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+# Create necessary directories
+RUN mkdir -p ${LAMBDA_TASK_ROOT}/memory
+RUN mkdir -p ${LAMBDA_TASK_ROOT}/sqlite-data
+RUN mkdir -p ${LAMBDA_TASK_ROOT}/mcp_servers
+
+RUN npm install -g @modelcontextprotocol/server-brave-search && \
+    echo "MCP server installed at: $(which mcp-server-brave-search)" && \
+    mcp-server-brave-search --version || echo "MCP server installed"
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY backend/ ${LAMBDA_TASK_ROOT}/backend/
+COPY mcp_servers/ ${LAMBDA_TASK_ROOT}/mcp_servers/
+
+# Ensure the wrapper is executable
+RUN chmod +x ${LAMBDA_TASK_ROOT}/mcp_servers/brave_search_wrapper.py
+
+# Copy frontend build (if needed for serving static files)
+COPY frontend/dist/ ${LAMBDA_TASK_ROOT}/static/
+
+# Set the Lambda handler
+CMD ["backend.api.lambda_handler_worker.handler"]

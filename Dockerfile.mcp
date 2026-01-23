@@ -1,0 +1,22 @@
+
+# Dockerfile for MCP Lambda Functions
+# This creates a single image that can be used for all three MCP Lambdas
+# The handler is specified at deployment time via Terraform
+
+FROM public.ecr.aws/lambda/python:3.12
+
+# Copy requirements and install dependencies
+COPY backend/requirements.txt ${LAMBDA_TASK_ROOT}/
+RUN pip install -r ${LAMBDA_TASK_ROOT}/requirements.txt --target ${LAMBDA_TASK_ROOT}
+
+# Copy application code
+COPY backend/ ${LAMBDA_TASK_ROOT}/backend/
+
+# Set working directory
+WORKDIR ${LAMBDA_TASK_ROOT}
+
+# Set Python path
+ENV PYTHONPATH=${LAMBDA_TASK_ROOT}:${LAMBDA_TASK_ROOT}/backend
+
+# Default handler (will be overridden by Terraform image_config)
+CMD ["backend.mcp_servers.draft_server_lambda_simple.handler"]

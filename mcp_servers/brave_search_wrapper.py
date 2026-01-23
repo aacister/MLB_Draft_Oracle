@@ -6,6 +6,9 @@ import asyncio
 import uuid
 from typing import Dict
 from pathlib import Path
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(override=True, dotenv_path=find_dotenv())
 
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
