@@ -9,6 +9,7 @@ from backend.models.players import Player
 from backend.models.teams import Team
 from backend.models.draft_history import DraftHistory
 from backend.models.draft_teams import DraftTeams
+from backend.models.draft_task import DraftTask
 from backend.models.draft_selection_data import DraftSelectionData
 from backend.models.player_pool import PlayerPool
 from backend.mcp_clients.draft_client import read_team_roster_resource, read_draft_history_resource
@@ -60,6 +61,11 @@ class Draft(BaseModel):
     
     @classmethod
     async def get(cls, id: Optional[str]):
+        # Generate draft name first (MOVED OUTSIDE the if block)
+        draft_name_generator_agent = await get_draft_name_generator()
+        message = draft_name_generator_message()
+        result = await Runner.run(draft_name_generator_agent, message)
+        draft_name = result.final_output
         if(id is None):
             id = str(uuid.uuid4())
             draft_name_generator_agent = await get_draft_name_generator()

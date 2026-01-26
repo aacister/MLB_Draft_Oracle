@@ -29,12 +29,13 @@ print(f"Working directory: {WORKING_DIR}")
 print(f"Is Lambda: {IS_LAMBDA}")
 print(f"Python command: {PYTHON_CMD}")
 
-# Environment for Python MCP servers - CRITICAL FIX
+# Environment for Python MCP servers - UPDATED TO USE DB_URL
 python_env = {
     "PYTHONPATH": WORKING_DIR,
     "PATH": os.environ.get("PATH", ""),
-    # Pass through all necessary environment variables for database access
-    "DB_SECRET_ARN": os.getenv("DB_SECRET_ARN", ""),
+    # Database connection via DB_URL
+    "DB_URL": os.getenv("DB_URL", ""),
+    # AWS Region
     "AWS_REGION": os.getenv("AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-2")),
     "AWS_REGION_NAME": os.getenv("AWS_REGION_NAME", os.getenv("AWS_REGION", "us-east-2")),
     # Pass AWS credentials if available (Lambda execution role provides these)
@@ -56,22 +57,20 @@ drafter_mcp_server_params = [
         "command": PYTHON_CMD,
         "args": [f"{WORKING_DIR}/mcp_servers/draft_server.py"],
         "working_directory": WORKING_DIR,
-        "env": python_env  # Use python_env instead of bare dict
+        "env": python_env
     }
 ]
 
 # In Lambda, use the pre-installed global package
 if IS_LAMBDA:
-
     researcher_mcp_server_params = [
         {
             "command": PYTHON_CMD,
             "args": [f"{WORKING_DIR}/mcp_servers/brave_search_wrapper.py"],
             "working_directory": WORKING_DIR,
-            "env": brave_env  # Includes BRAVE_API_KEY
+            "env": brave_env
         }
     ]
-    
 else:
     # Local dev: use npx
     researcher_mcp_server_params = [
@@ -89,6 +88,6 @@ knowledgebase_mcp_server_params = [
         "command": PYTHON_CMD,
         "args": [f"{WORKING_DIR}/mcp_servers/knowledgebase_server.py"],
         "working_directory": WORKING_DIR,
-        "env": python_env  # Use python_env
+        "env": python_env
     }
 ]

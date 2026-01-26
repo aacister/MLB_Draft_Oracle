@@ -1,3 +1,6 @@
+# ============================================================================
+# backend/api/lambda_handler.py - REFACTORED VERSION
+# ============================================================================
 from mangum import Mangum
 from backend.api.main import app
 import logging
@@ -8,12 +11,11 @@ logger.setLevel(logging.INFO)
 
 def handler(event, context):
     """
-    Lambda handler with PostgreSQL RDS support ONLY.
-    SQLite support has been removed.
+    Lambda handler with PostgreSQL RDS support using DB_URL.
     """
     try:
         logger.info(f"Received event: {event.get('httpMethod')} {event.get('path')}")
-        logger.info("Using PostgreSQL RDS exclusively")
+        logger.info("Using PostgreSQL RDS via DB_URL environment variable")
         
         # Handle OPTIONS requests directly for CORS preflight
         if event.get('httpMethod') == 'OPTIONS':
@@ -28,20 +30,20 @@ def handler(event, context):
                 'body': ''
             }
         
-        # Verify PostgreSQL RDS credentials are available
-        db_secret_arn = os.getenv('DB_SECRET_ARN')
-        if not db_secret_arn:
-            logger.error("DB_SECRET_ARN not set - PostgreSQL RDS is required")
+        # Verify DB_URL is available
+        db_url = os.getenv('DB_URL')
+        if not db_url:
+            logger.error("DB_URL not set - PostgreSQL RDS connection required")
             return {
                 'statusCode': 500,
                 'headers': {
                     'Access-Control-Allow-Origin': '*',
                     'Content-Type': 'application/json'
                 },
-                'body': '{"error": "Database configuration error", "message": "DB_SECRET_ARN not configured"}'
+                'body': '{"error": "Database configuration error", "message": "DB_URL not configured"}'
             }
         
-        logger.info(f"Using PostgreSQL RDS with secret: {db_secret_arn}")
+        logger.info("PostgreSQL RDS connection configured via DB_URL")
         
         # Use Mangum to handle the request
         asgi_handler = Mangum(app, lifespan="off")

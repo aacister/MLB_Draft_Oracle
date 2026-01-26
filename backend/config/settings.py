@@ -15,27 +15,11 @@ class Settings:
     AWS_REGION = os.getenv("AWS_REGION_NAME", "us-east-2")
     
     # RDS PostgreSQL Configuration (PRIMARY DATABASE)
-    DB_SECRET_ARN = os.getenv("DB_SECRET_ARN")
+    # Single DB_URL replaces DB_SECRET_ARN
+    DB_URL = os.getenv("DB_URL")
     
     # FORCE PostgreSQL usage - always use RDS
     USE_POSTGRESQL = True
-    
-    # ============================================================================
-    # DEPRECATED: SQLite and Memory Storage (Commented out but preserved)
-    # ============================================================================
-    # # S3 Configuration for SQLite persistence
-    # S3_BUCKET = os.getenv("S3_DB_BUCKET", "mlbdraftoracle-sqlite-425865275846")
-    # S3_DB_KEY = "mlbdraftoracle.db"
-    # S3_MEMORY_BUCKET = os.getenv("S3_MEMORY_BUCKET", "mlbdraftoracle-memory-425865275846")
-    # 
-    # # Database paths based on environment
-    # if DEPLOYMENT_ENV == "LAMBDA":
-    #     SQLITE_DB_PATH = "/tmp/mlbdraftoracle.db"
-    #     MEMORY_DIR = "/tmp/memory"
-    # else:
-    #     SQLITE_DB_PATH = "/app/sqlite-data/mlbdraftoracle.db"
-    #     MEMORY_DIR = "/app/memory"
-    # ============================================================================
     
     # MCP server paths
     MCP_WORKING_DIR = "/app" if DEPLOYMENT_ENV == "LAMBDA" else os.getcwd()

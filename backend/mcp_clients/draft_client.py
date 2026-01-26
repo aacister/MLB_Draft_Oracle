@@ -34,7 +34,7 @@ else:
         env = {
             "PYTHONPATH": working_dir,
             "PATH": os.environ.get("PATH", ""),
-            "DB_SECRET_ARN": os.getenv("DB_SECRET_ARN", ""),
+            "DB_URL": os.getenv("DB_URL", ""),  # ← Changed
             "AWS_REGION": os.getenv("AWS_REGION", "us-east-2"),
             "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
             "DEPLOYMENT_ENVIRONMENT": "DEV",

@@ -15,8 +15,8 @@ import os
 
 logger = logging.getLogger(__name__)
 
-RESEARCHER_MAX_TURNS = 15
-DRAFTER_MAX_TURNS = 15
+RESEARCHER_MAX_TURNS = 30
+DRAFTER_MAX_TURNS = 50
 
 # Detect if running in Lambda environment
 IS_LAMBDA = os.path.exists("/var/task") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")

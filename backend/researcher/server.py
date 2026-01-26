@@ -42,7 +42,7 @@ async def run_research_agent() -> str:
                 mcp_servers=[mcp_server],
             )
 
-            result = await Runner.run(agent, input=query, max_turns=15)
+            result = await Runner.run(agent, input=query, max_turns=50)
 
     return result.final_output
 

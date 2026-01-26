@@ -1,12 +1,12 @@
+# ============================================================================
+# backend/data/postgresql/connection.py 
+# ============================================================================
 import os
-import json
 import logging
 from typing import Optional
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import NullPool
-import boto3
-from botocore.exceptions import ClientError
 from backend.config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -14,76 +14,33 @@ logger = logging.getLogger(__name__)
 # Global variables for connection caching
 _engine = None
 _session_factory = None
-_db_credentials = None
-
-
-def get_db_credentials() -> dict:
-    """
-    Retrieve database credentials from AWS Secrets Manager.
-    PostgreSQL RDS ONLY - SQLite support removed.
-    
-    Returns:
-        dict: Database connection parameters for PostgreSQL
-    """
-    global _db_credentials
-    
-    # Return cached credentials if available
-    if _db_credentials:
-        return _db_credentials
-    
-    # AWS Lambda/Production: Use RDS PostgreSQL ONLY
-    secret_arn = os.getenv('DB_SECRET_ARN')
-    if not secret_arn:
-        raise ValueError("DB_SECRET_ARN environment variable not set - PostgreSQL RDS is required")
-    
-    try:
-        # Create Secrets Manager client
-        region = settings.AWS_REGION if hasattr(settings, 'AWS_REGION') else 'us-east-2'
-        client = boto3.client('secretsmanager', region_name=region)
-        
-        # Retrieve secret
-        response = client.get_secret_value(SecretId=secret_arn)
-        secret = json.loads(response['SecretString'])
-        
-        _db_credentials = {
-            'engine': 'postgresql',
-            'host': secret['host'],
-            'port': secret.get('port', 5432),
-            'database': secret['dbname'],
-            'username': secret['username'],
-            'password': secret['password']
-        }
-        logger.info(f"Retrieved PostgreSQL credentials from Secrets Manager for host: {secret['host']}")
-        
-    except ClientError as e:
-        logger.error(f"Failed to retrieve database credentials from Secrets Manager: {e}")
-        raise
-    except KeyError as e:
-        logger.error(f"Missing required key in secret: {e}")
-        raise
-    
-    return _db_credentials
 
 
 def get_connection_string() -> str:
     """
-    Build PostgreSQL RDS connection string.
+    Build PostgreSQL connection string from DB_URL environment variable.
     
     Returns:
         str: SQLAlchemy connection string for PostgreSQL
-    """
-    creds = get_db_credentials()
     
-    # PostgreSQL connection string ONLY
-    return (
-        f"postgresql+psycopg2://{creds['username']}:{creds['password']}"
-        f"@{creds['host']}:{creds['port']}/{creds['database']}"
-    )
+    Raises:
+        ValueError: If DB_URL is not set
+    """
+    db_url = os.getenv('DB_URL')
+    
+    if not db_url:
+        raise ValueError(
+            "DB_URL environment variable not set. "
+            "Expected format: postgresql+psycopg2://user:password@host:port/database"
+        )
+    
+    logger.info(f"Using database connection from DB_URL environment variable")
+    return db_url
 
 
 def get_engine():
     """
-    Get or create SQLAlchemy engine for PostgreSQL RDS.
+    Get or create SQLAlchemy engine for PostgreSQL.
     
     Returns:
         Engine: SQLAlchemy engine instance
@@ -106,7 +63,7 @@ def get_engine():
             'options': '-c statement_timeout=30000'  # 30 second timeout
         }
     )
-    logger.info("Created PostgreSQL engine for RDS")
+    logger.info("Created PostgreSQL engine")
     
     return _engine
 
@@ -145,14 +102,13 @@ def close_connections():
     Close all database connections and clear cached resources.
     Useful for cleanup in Lambda functions.
     """
-    global _engine, _session_factory, _db_credentials
+    global _engine, _session_factory
     
     if _engine:
         _engine.dispose()
         _engine = None
     
     _session_factory = None
-    _db_credentials = None
     
     logger.info("Closed all database connections")
 
