@@ -59,10 +59,25 @@ async def execute_draft_pick_async(draft_id, team_name, round_num, pick_num):
     except Exception as e:
         logger.error(f"[Worker] ===== ERROR =====")
         logger.error(f"[Worker] Error: {e}", exc_info=True)
-        return {
-            "success": False,
-            "error": str(e)
-        }
+        
+        # Return error with detailed message for frontend
+        error_message = str(e)
+        if "DRAFT FAILED" in error_message:
+            # This is a draft failure - include full details
+            return {
+                "success": False,
+                "error": error_message,
+                "error_type": "draft_failure",
+                "message": "All draft attempts failed. Please try again or contact support."
+            }
+        else:
+            # Generic error
+            return {
+                "success": False,
+                "error": error_message,
+                "error_type": "unknown",
+                "message": "An error occurred during the draft."
+            }
 
 
 def handler(event, context):

@@ -143,8 +143,8 @@ async def initialize_player_pool(id: str) -> PlayerPool:
     """
     logger.info("Initializing player pool from MLB Stats API...")
     
-    # Use 2024 season (most recent completed season with full data)
-    season = 2024
+    # Use 2025 season (most recent completed season with full data)
+    season = 2025
     
     try:
         names_set = await get_players_from_statsapi(names_set=set(), season=season)
@@ -231,8 +231,8 @@ async def add_to_player_pool(names_set: set, player_pool: list, player_position_
                 pos = 'OF'
             
             # Check position quota
-            if player_position_count_map.get(pos, 0) >= 20:
-                logger.debug(f"{player['fullName']} not added. Position {pos} quota reached (>= 20)")
+            if player_position_count_map.get(pos, 0) >= 75:
+                logger.debug(f"{player['fullName']} not added. Position {pos} quota reached (>= 75)")
                 continue
             
             # Fetch player stats
@@ -364,36 +364,55 @@ async def get_players_from_statsapi(names_set: set, season: int) -> set:
     try:
         logger.info(f"Fetching MLB Stats API leader boards for {season} season...")
         
-        # Fetch various stat leaders
-        hr_leaders = fetch_league_leaders('homeRuns', season=season, limit=50)
+        # Fetch HITTING stat leaders (increased limits)
+        hr_leaders = fetch_league_leaders('homeRuns', season=season, limit=75)
         logger.info(f"✓ Fetched {len(hr_leaders)} home run leaders")
         
-        ba_leaders = fetch_league_leaders('battingAverage', season=season, limit=50)
+        ba_leaders = fetch_league_leaders('battingAverage', season=season, limit=75)
         logger.info(f"✓ Fetched {len(ba_leaders)} batting average leaders")
         
-        sb_leaders = fetch_league_leaders('stolenBases', season=season, limit=50)
+        sb_leaders = fetch_league_leaders('stolenBases', season=season, limit=75)
         logger.info(f"✓ Fetched {len(sb_leaders)} stolen base leaders")
         
-        slugging_leaders = fetch_league_leaders('sluggingPercentage', season=season, limit=50)
+        slugging_leaders = fetch_league_leaders('sluggingPercentage', season=season, limit=75)
         logger.info(f"✓ Fetched {len(slugging_leaders)} slugging percentage leaders")
         
-        strikeout_leaders = fetch_league_leaders('strikeouts', season=season, limit=50)
+        runs_leaders = fetch_league_leaders('runs', season=season, limit=75)
+        logger.info(f"✓ Fetched {len(runs_leaders)} runs leaders")
+        
+        hits_leaders = fetch_league_leaders('hits', season=season, limit=75)
+        logger.info(f"✓ Fetched {len(hits_leaders)} hits leaders")
+        
+        rbi_leaders = fetch_league_leaders('rbi', season=season, limit=75)
+        logger.info(f"✓ Fetched {len(rbi_leaders)} RBI leaders")
+        
+        doubles_leaders = fetch_league_leaders('doubles', season=season, limit=50)
+        logger.info(f"✓ Fetched {len(doubles_leaders)} doubles leaders")
+        
+        obp_leaders = fetch_league_leaders('onBasePercentage', season=season, limit=50)
+        logger.info(f"✓ Fetched {len(obp_leaders)} OBP leaders")
+        
+        # Fetch PITCHING stat leaders (increased limits)
+        strikeout_leaders = fetch_league_leaders('strikeouts', season=season, limit=75)
         logger.info(f"✓ Fetched {len(strikeout_leaders)} strikeout leaders")
         
-        wins_leaders = fetch_league_leaders('wins', season=season, limit=50)
+        wins_leaders = fetch_league_leaders('wins', season=season, limit=75)
         logger.info(f"✓ Fetched {len(wins_leaders)} wins leaders")
         
-        saves_leaders = fetch_league_leaders('saves', season=season, limit=50)
+        saves_leaders = fetch_league_leaders('saves', season=season, limit=75)
         logger.info(f"✓ Fetched {len(saves_leaders)} saves leaders")
+        
+        era_leaders = fetch_league_leaders('earnedRunAverage', season=season, limit=75)
+        logger.info(f"✓ Fetched {len(era_leaders)} ERA leaders")
+        
+        whip_leaders = fetch_league_leaders('walksAndHitsPerInningPitched', season=season, limit=75)
+        logger.info(f"✓ Fetched {len(whip_leaders)} WHIP leaders")
         
         strikeoutWalkRatio_leaders = fetch_league_leaders('strikeoutWalkRatio', season=season, limit=50)
         logger.info(f"✓ Fetched {len(strikeoutWalkRatio_leaders)} K/BB ratio leaders")
         
-        runs_leaders = fetch_league_leaders('runs', season=season, limit=50)
-        logger.info(f"✓ Fetched {len(runs_leaders)} runs leaders")
-        
-        hits_leaders = fetch_league_leaders('hits', season=season, limit=50)
-        logger.info(f"✓ Fetched {len(hits_leaders)} hits leaders")
+        innings_leaders = fetch_league_leaders('inningsPitched', season=season, limit=50)
+        logger.info(f"✓ Fetched {len(innings_leaders)} innings pitched leaders")
         
         # Add all names to set
         for hr_leader in hr_leaders:
@@ -416,6 +435,18 @@ async def get_players_from_statsapi(names_set: set, season: int) -> set:
             names_set.add(saves_leader[1])
         for k_walk_ratio_leader in strikeoutWalkRatio_leaders:
             names_set.add(k_walk_ratio_leader[1])
+        for rbi_leader in rbi_leaders:
+            names_set.add(rbi_leader[1])
+        for doubles_leader in doubles_leaders:
+            names_set.add(doubles_leader[1])
+        for obp_leader in obp_leaders:
+            names_set.add(obp_leader[1])
+        for era_leader in era_leaders:
+            names_set.add(era_leader[1])
+        for whip_leader in whip_leaders:
+            names_set.add(whip_leader[1])
+        for innings_leader in innings_leaders:
+            names_set.add(innings_leader[1])
         
         logger.info(f"✓ Collected {len(names_set)} unique player names from leader boards")
         return names_set
