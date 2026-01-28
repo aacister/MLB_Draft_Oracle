@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import sys
 import os
 import json
@@ -84,26 +83,88 @@ def handler(event, context):
             import asyncio
             uri = params.get('uri')
             
-            if '/available' in uri:
-                draft_id = uri.split('/')[2]
-                result = asyncio.run(read_draft_player_pool_available_resource(draft_id))
-            elif uri.startswith('draft://player_pool/'):
-                draft_id = uri.split('/')[2]
-                result = asyncio.run(read_draft_player_pool_resource(draft_id))
-            elif uri.startswith('draft://team_roster/'):
-                parts = uri.split('/')
-                result = asyncio.run(read_draft_team_roster_resource(parts[2], parts[3]))
-            elif uri.startswith('draft://history/'):
-                draft_id = uri.split('/')[2]
-                result = asyncio.run(read_draft_history_resource(draft_id))
-            else:
-                return {"jsonrpc": "2.0", "error": {"code": -32602, "message": f"Unknown resource: {uri}"}, "id": request_id}
+            logger.info(f"Reading resource: {uri}")
             
-            return {"jsonrpc": "2.0", "result": {"contents": [{"type": "text", "text": result}]}, "id": request_id}
+            # Parse URI correctly
+            # Format: draft://resource_type/draft_id[/additional_params]
+            
+            if '/available' in uri:
+                # draft://player_pool/DRAFT_ID/available
+                draft_id = uri.split('/')[2]
+                logger.info(f"Reading available players for draft: {draft_id}")
+                result = asyncio.run(read_draft_player_pool_available_resource(draft_id))
+                
+            elif uri.startswith('draft://player_pool/'):
+                # draft://player_pool/DRAFT_ID
+                draft_id = uri.split('/')[2]
+                logger.info(f"Reading player pool for draft: {draft_id}")
+                result = asyncio.run(read_draft_player_pool_resource(draft_id))
+                
+            elif uri.startswith('draft://team_roster/'):
+                # draft://team_roster/DRAFT_ID/TEAM_NAME
+                parts = uri.split('/')
+                # parts[0] = "draft:"
+                # parts[1] = ""
+                # parts[2] = "team_roster"
+                # parts[3] = draft_id
+                # parts[4] = team_name
+                
+                if len(parts) < 5:
+                    return {
+                        "jsonrpc": "2.0",
+                        "error": {
+                            "code": -32602,
+                            "message": f"Invalid URI format: {uri}. Expected draft://team_roster/DRAFT_ID/TEAM_NAME"
+                        },
+                        "id": request_id
+                    }
+                
+                draft_id = parts[3]
+                team_name = parts[4]
+                logger.info(f"Reading team roster for draft: {draft_id}, team: {team_name}")
+                result = asyncio.run(read_draft_team_roster_resource(draft_id, team_name))
+                
+            elif uri.startswith('draft://history/'):
+                # draft://history/DRAFT_ID
+                draft_id = uri.split('/')[2]
+                logger.info(f"Reading draft history for draft: {draft_id}")
+                result = asyncio.run(read_draft_history_resource(draft_id))
+                
+            else:
+                return {
+                    "jsonrpc": "2.0",
+                    "error": {
+                        "code": -32602,
+                        "message": f"Unknown resource: {uri}"
+                    },
+                    "id": request_id
+                }
+            
+            return {
+                "jsonrpc": "2.0",
+                "result": {
+                    "contents": [{"type": "text", "text": result}]
+                },
+                "id": request_id
+            }
         
         else:
-            return {"jsonrpc": "2.0", "error": {"code": -32601, "message": f"Unknown method: {method}"}, "id": request_id}
+            return {
+                "jsonrpc": "2.0",
+                "error": {
+                    "code": -32601,
+                    "message": f"Unknown method: {method}"
+                },
+                "id": request_id
+            }
     
     except Exception as e:
         logger.error(f"Error: {e}", exc_info=True)
-        return {"jsonrpc": "2.0", "error": {"code": -32603, "message": str(e)}, "id": event.get('id', 1)}
+        return {
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32603,
+                "message": str(e)
+            },
+            "id": event.get('id', 1)
+        }

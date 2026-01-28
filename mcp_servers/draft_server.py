@@ -75,86 +75,36 @@ mcp = FastMCP(
 @mcp.tool()
 async def draft_specific_player(draft_id, team_name, player_name, round_num, pick_num, rationale) -> str:
     """
-    Draft a player for a team in the draft.
-    Returns immediately with a task ID, actual drafting happens in background.
-    
-    CRITICAL: The task_id is stored in PostgreSQL database.
-    Use check_draft_status(task_id) to poll for completion.
+    Draft a player for a team (synchronous - waits for completion).
     """
     if not models_AVAILABLE:
-        return json.dumps({
-            "status": "error",
-            "error": "Database models not available",
-            "task_id": None
-        })
+        return json.dumps({"status": "error", "error": "Database models not available"})
     
-    # Generate unique task ID
     task_id = f"draft_{uuid.uuid4().hex[:8]}"
     
-    # Create task in database
-    task = DraftTask.create(
-        task_id=task_id,
-        draft_id=draft_id,
-        team_name=team_name,
-        player_name=player_name,
-        round=int(round_num),
-        pick=int(pick_num)
-    )
-    
-    logger.info(f"✓ Task {task_id} created in database for {player_name}")
-    
-    # Verify it was saved
-    verify_task = DraftTask.get(task_id)
-    if verify_task:
-        logger.info(f"✓ Task {task_id} verified in database with status: {verify_task.status}")
-    else:
-        logger.error(f"✗ Task {task_id} NOT FOUND in database after creation!")
-    
-    # Start background task (non-blocking)
-    asyncio.create_task(
-        _process_draft_in_background(
-            task_id, draft_id, team_name, player_name, 
-            round_num, pick_num, rationale
-        )
-    )
-    
-    # Return immediately with task ID
-    return json.dumps({
-        "status": "accepted",
-        "task_id": task_id,
-        "message": f"Draft initiated for {player_name}",
-        "player_name": player_name
-    })
-
-
-async def _process_draft_in_background(
-    task_id: str, 
-    draft_id: str, 
-    team_name: str, 
-    player_name: str, 
-    round_num: str, 
-    pick_num: str, 
-    rationale: str
-):
-    """Background task to actually process the draft"""
     try:
-        logger.info(f"Task {task_id}: Processing draft in background")
+        # Create task in database
+        task = DraftTask.create(
+            task_id=task_id,
+            draft_id=draft_id,
+            team_name=team_name,
+            player_name=player_name,
+            round=int(round_num),
+            pick=int(pick_num)
+        )
         
-        # Load task from database
-        task = DraftTask.get(task_id)
-        if not task:
-            logger.error(f"Task {task_id} not found in database!")
-            return
+        logger.info(f"✓ Task {task_id} created for {player_name}")
         
-        # Update status
+        # ✅ FIX: Run synchronously instead of background task
         task.update_status("drafting", f"Drafting {player_name}...")
         
+        # Load draft
         draft = await Draft.get(draft_id)
-        if draft == None:
-            task.mark_error(f"Draft {draft_id} does not exist")
-            return
+        if not draft:
+            task.mark_error(f"Draft {draft_id} not found")
+            return json.dumps(task.model_dump(by_alias=True))
         
-        # Ensure player_pool is initialized
+        # Ensure player_pool
         if draft.player_pool is None:
             draft.player_pool = await PlayerPool.get(id=None)
         
@@ -162,40 +112,41 @@ async def _process_draft_in_background(
         selected_player = next((p for p in available_players if p.name == player_name), None)
         
         if not selected_player:
-            logger.warning(f"Task {task_id}: Player {player_name} not found")
-            task.mark_error(f"Player {player_name} not found in available players")
-            return
+            task.mark_error(f"Player {player_name} not found")
+            return json.dumps(task.model_dump(by_alias=True))
         
         team = Team.get(team_name)
-        round_num = int(round_num)
-        pick_num = int(pick_num)
         
         # Actually draft the player
+        logger.info(f"Task {task_id}: Drafting {player_name}...")
         await draft.draft_player(
             team=team,
-            round=round_num,
-            pick=pick_num,
+            round=int(round_num),
+            pick=int(pick_num),
             selected_player=selected_player,
             rationale=rationale
         )
         
         logger.info(f"Task {task_id}: ✓ Successfully drafted {player_name}")
         
-        # Update to completed status
+        # Mark as completed
         task.mark_completed(
             player_id=selected_player.id,
             player_name=selected_player.name,
             reason=rationale
         )
         
-        logger.info(f"Task {task_id} marked as completed in database")
+        logger.info(f"Task {task_id}: ✓ Marked as completed")
+        
+        return json.dumps(task.model_dump(by_alias=True))
         
     except Exception as e:
         logger.error(f"Task {task_id}: Error - {e}", exc_info=True)
         task = DraftTask.get(task_id)
         if task:
             task.mark_error(str(e))
-
+            return json.dumps(task.model_dump(by_alias=True))
+        return json.dumps({"status": "error", "error": str(e), "task_id": task_id})
 
 @mcp.tool()
 async def check_draft_status(task_id: str) -> str:

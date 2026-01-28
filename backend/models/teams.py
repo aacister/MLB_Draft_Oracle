@@ -32,7 +32,7 @@ class TeamContext(BaseModel):
 
 class Team(BaseModel):
     name: str = Field(description="Name of the team.")
-    strategy: str = Field(description="Stategy of the team")
+    strategy: str = Field(description="Strategy of the team")
     roster: Dict[str, Optional[Player]] = Field(description="team's roster of positions and player drafted for respective position ")
     drafted_players: List[Player] = Field(description="List of players drafted by team")
 
@@ -86,17 +86,30 @@ class Team(BaseModel):
         return json.dumps(data)
     
     async def _create_agent(self, agent_name, tools, instructions) -> Agent:
-        """Create agent without MCP servers (tools provide MCP functionality)"""
+        """Create agent with tools"""
+        logger.info(f"[_create_agent] Creating agent '{agent_name}' with {len(tools)} tools")
+        
+        # Log tool names for debugging
+        tool_names = []
+        for tool in tools:
+            if isinstance(tool, dict):
+                name = tool.get('function', {}).get('name', 'unknown')
+            else:
+                name = getattr(tool, 'name', 'unknown')
+            tool_names.append(name)
+        
+        logger.info(f"[_create_agent] Tool names: {tool_names}")
+        
         self._agent = Agent(
             name=agent_name,
             instructions=instructions,
-            model="gpt-4o-mini", 
+            model="gpt-4o-mini",  
             tools=tools,
         )
         return self._agent
 
     async def select_player(self, draft, round: int, pick: int) -> str:
-        """Select player for team - uses Lambda MCP clients in Lambda, stdio in local dev"""
+        """Select player for team - uses Lambda MCP invokers in Lambda, stdio in local dev"""
         logger.info(f"Team {self.name} selecting player in Round {round}, Pick {pick}")
         if draft.is_complete:
             return "Draft is complete"
@@ -106,7 +119,19 @@ class Team(BaseModel):
                 # Get draft context
                 strategy = self.get_strategy()
                 roster_json = await read_team_roster_resource(draft.id.lower(), self.name.lower())
-                roster = json.loads(roster_json) if isinstance(roster_json, str) else roster_json
+                
+                # Handle empty roster
+                if not roster_json or (isinstance(roster_json, str) and roster_json.strip() == ""):
+                    logger.info(f"Empty roster - using empty roster")
+                    roster = {"roster": []}
+                else:
+                    try:
+                        roster = json.loads(roster_json) if isinstance(roster_json, str) else roster_json
+                        logger.info(f"✓ Successfully parsed roster JSON")
+                    except json.JSONDecodeError as e:
+                        logger.error(f"✗ Invalid JSON in roster: {e}")
+                        roster = {"roster": []}
+                
                 needed_positions_set = {key for key, value in roster.items() if value is None}
                 needed_positions = ','.join(map(str, needed_positions_set))
                 player_pool_json = await read_draft_player_pool_available_resource(draft.id.lower())
@@ -140,42 +165,94 @@ class Team(BaseModel):
                 )
 
                 if IS_LAMBDA:
-                    # Lambda environment - use Lambda MCP clients (no stdio)
-                    logger.info("[select_player] Using Lambda MCP clients")
+                    # ================================================================
+                    # Lambda environment - use Lambda MCP invokers
+                    # These invoke separate Lambda functions for MCP operations
+                    # ================================================================
+                    logger.info("[select_player] Using Lambda MCP invokers (separate Lambda functions)")
                     
-                    # Import Lambda MCP clients
-                    from backend.mcp_clients.lambda_mcp_client import (
-                        get_draft_mcp_client,
-                        get_knowledgebase_mcp_client,
-                        get_brave_search_mcp_client
+                    from backend.mcp_clients.lambda_mcp_invoker import (
+                        get_draft_mcp_invoker,
+                        get_search_mcp_invoker
                     )
                     
-                    # Initialize clients (these are lightweight objects, not servers)
-                    draft_client = get_draft_mcp_client()
-                    kb_client = get_knowledgebase_mcp_client()
-                    search_client = get_brave_search_mcp_client()
+                    # Get invokers (these call separate Lambda functions)
+                    draft_invoker = get_draft_mcp_invoker()
+                    search_invoker = get_search_mcp_invoker()
                     
-                    logger.info("[select_player] Lambda MCP clients initialized")
+                    logger.info("[select_player] Lambda MCP invokers initialized")
                     
-                    # Get draft tools (these use Lambda MCP clients internally)
-                    draft_tools = await get_draft_tools()
+                    # Get tools from MCP Lambdas
+                    logger.info("[select_player] Fetching tools from MCP Lambdas...")
+                    draft_tools_raw = await draft_invoker.list_tools()
                     
-                    # Create drafter agent with tools only (no MCP servers)
+                    logger.info(f"[select_player] Got {len(draft_tools_raw)} draft tools from MCP Lambda")
+                    
+                    # Convert MCP tools to agents library format
+                    draft_tools = []
+                    for tool_def in draft_tools_raw:
+                        tool_name = tool_def['name']
+                        
+                        # Create wrapper function that invokes the Lambda
+                        async def create_tool_wrapper(invoker, name):
+                            async def tool_function(**kwargs):
+                                logger.info(f"[Tool Wrapper] Calling {name} via Lambda invoker")
+                                result = await invoker.call_tool(name, kwargs)
+                                logger.info(f"[Tool Wrapper] {name} result: {result.get('status', 'unknown')}")
+                                return result
+                            return tool_function
+                        
+                        tool_impl = await create_tool_wrapper(draft_invoker, tool_name)
+                        
+                        # Format for agents library
+                        draft_tools.append({
+                            "type": "function",
+                            "function": {
+                                "name": tool_def['name'],
+                                "description": tool_def['description'],
+                                "parameters": tool_def['inputSchema']
+                            },
+                            "implementation": tool_impl
+                        })
+                    
+                    logger.info(f"[select_player] Converted {len(draft_tools)} tools for agents")
+                    
+                    # Create drafter agent with tools
                     drafter_agent = await self._create_agent(
                         agent_name="Drafter",
                         tools=draft_tools,
                         instructions=drafter_message
                     )
                     
-                    # For researcher, we can use knowledge base tools if needed
-                    # For now, create a simple researcher agent
-                    from backend.mcp_clients.knowledgebase_client import get_knowledgebase_tools
-                    
+                    # For researcher, try to get search tools if available
                     try:
-                        kb_tools = await get_knowledgebase_tools()
-                        researcher_tools = kb_tools
+                        search_tools_raw = await search_invoker.list_tools()
+                        logger.info(f"[select_player] Got {len(search_tools_raw)} search tools")
+                        
+                        researcher_tools = []
+                        for tool_def in search_tools_raw:
+                            tool_name = tool_def['name']
+                            
+                            async def create_search_wrapper(invoker, name):
+                                async def tool_function(**kwargs):
+                                    logger.info(f"[Search Wrapper] Calling {name} via Lambda invoker")
+                                    result = await invoker.call_tool(name, kwargs)
+                                    return result
+                                return tool_function
+                            
+                            tool_impl = await create_search_wrapper(search_invoker, tool_name)
+                            
+                            researcher_tools.append({
+                                "type": "function",
+                                "function": {
+                                    "name": tool_def['name'],
+                                    "description": tool_def['description'],
+                                    "parameters": tool_def['inputSchema']
+                                },
+                                "implementation": tool_impl
+                            })
                     except Exception as e:
-                        logger.warning(f"Could not get knowledge base tools: {e}")
+                        logger.warning(f"Could not get search tools: {e}")
                         researcher_tools = []
                     
                     researcher_agent = await self._create_agent(
@@ -211,7 +288,9 @@ class Team(BaseModel):
                     return str(drafter_result.final_output)
                 
                 else:
+                    # ================================================================
                     # Local development - use stdio MCP servers
+                    # ================================================================
                     logger.info("[select_player] Using stdio MCP servers (local dev)")
                     
                     from agents.mcp import MCPServerStdio
@@ -298,3 +377,15 @@ class Team(BaseModel):
             'roster': {pos: player.to_dict() if player else None for pos, player in self.roster.items()},
             'drafted_players': [player.to_dict() for player in self.drafted_players]
         }
+
+
+
+
+
+
+
+
+
+
+
+

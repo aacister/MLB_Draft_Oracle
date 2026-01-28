@@ -11,7 +11,7 @@ from agents import FunctionTool
 logger = logging.getLogger(__name__)
 
 # Detect if running in Lambda
-IS_LAMBDA = os.path.exists("/var/task") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+IS_LAMBDA = os.path.exists("/var/task") or os.getenv("WORKER_LAMBDA_FUNCTION_NAME")
 
 if IS_LAMBDA:
     # Use the package's Lambda MCP client

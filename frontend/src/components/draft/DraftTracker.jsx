@@ -53,6 +53,8 @@ const DraftTracker = () => {
   } = useResearch();
 
   const runDraftPicks = async (draft, startRound, startPick) => {
+    console.log('🎯 [runDraftPicks] STARTING', { draft, startRound, startPick });
+    
     const numTeams = draft.draft_order.length;
     let current_pick = startPick;
     
@@ -61,6 +63,7 @@ const DraftTracker = () => {
     try {
       for (let roundNum = startRound; roundNum <= draft.num_rounds; roundNum++) {
         if (stopDraftRef.current) {
+          console.log('🛑 [runDraftPicks] Stopped by user');
           updateStatus(`Draft stopped at Round ${roundNum}, Pick ${current_pick}`);
           return;
         }
@@ -71,20 +74,24 @@ const DraftTracker = () => {
         
         for (let pickNum = Math.max(current_pick, firstPickOfRound); pickNum <= lastPickOfRound; pickNum++) {
           if (stopDraftRef.current) {
+            console.log('🛑 [runDraftPicks] Stopped by user');
             updateStatus(`Draft stopped at Round ${roundNum}, Pick ${pickNum}`);
             return;
           }
           
           const team_name = getTeamForPick(roundNum, pickNum, draft.draft_order);
           
+          console.log(`📍 [runDraftPicks] About to draft: R${roundNum} P${pickNum} Team: ${team_name}`);
+          
           setCurrentRound(roundNum);
           setCurrentPick(pickNum);
           
-          console.log(`Round ${roundNum}, Pick ${pickNum}: ${team_name} drafting`);
           updateStatus(`Round ${roundNum}, Pick ${pickNum}: ${team_name} is drafting ...`);
           
           try {
-            // Use the async method with polling
+            console.log(`🚀 [runDraftPicks] Calling draftPlayerAsync...`);
+            
+            // THIS IS THE CRITICAL CALL
             const status = await draftPlayerAsync(
               draft.draft_id,
               team_name,
@@ -92,13 +99,13 @@ const DraftTracker = () => {
               pickNum
             );
             
-            console.log('Pick completed:', status);
+            console.log(`✅ [runDraftPicks] Pick completed:`, status);
             
             // Refresh draft details after each pick
             await fetchDraftDetails(draft.draft_id);
             
           } catch (error) {
-            console.error(`Error drafting for ${team_name}:`, error);
+            console.error(`❌ [runDraftPicks] Error drafting for ${team_name}:`, error);
             updateStatus(`Error: ${error.message}`);
             throw error;
           }
