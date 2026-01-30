@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from backend.utils.util import Position, NO_OF_TEAMS, NO_OF_ROUNDS
 from backend.models.players import Player
 from backend.data.postgresql.unified_db import write_team, read_team
-from agents import Agent, Runner, trace
+from agents import FunctionTool, Agent, Runner, trace
 from contextlib import AsyncExitStack
 from backend.templates.templates import team_input, drafter_agent_instructions, researcher_agent_instructions
 from backend.mcp_clients.draft_client import get_draft_tools, read_team_roster_resource, read_draft_player_pool_available_resource
@@ -16,7 +16,7 @@ import os
 logger = logging.getLogger(__name__)
 
 RESEARCHER_MAX_TURNS = 30
-DRAFTER_MAX_TURNS = 50
+DRAFTER_MAX_TURNS = 100
 
 # Detect if running in Lambda environment
 IS_LAMBDA = os.path.exists("/var/task") or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
@@ -134,7 +134,59 @@ class Team(BaseModel):
                 
                 needed_positions_set = {key for key, value in roster.items() if value is None}
                 needed_positions = ','.join(map(str, needed_positions_set))
-                player_pool_json = await read_draft_player_pool_available_resource(draft.id.lower())
+                # TEMPORARY FIX: Read player pool directly from database instead of MCP resource
+               
+                logger.info("[select_player] ===== LOADING PLAYER POOL DIRECTLY =====")
+
+                try:
+                    if draft.player_pool and hasattr(draft.player_pool, 'players'):
+                        all_players = draft.player_pool.players
+                        logger.info(f"[select_player] Total players in pool: {len(all_players)}")
+                        
+                        # Filter to undrafted players
+                        available_players = [p for p in all_players if not p.is_drafted]
+                        logger.info(f"[select_player] Available players: {len(available_players)}")
+                        
+                        # Convert to SIMPLE JSON (name + position only to save tokens)
+                        players_data = []
+                        for p in available_players:
+                            # MINIMAL data to stay under token limit
+                            player_dict = {
+                                "name": p.name,
+                                "position": p.position,
+                            }
+                            players_data.append(player_dict)
+                        
+                        player_pool_json = json.dumps(players_data)
+                        logger.info(f"[select_player] ✓ Player pool JSON created: {len(player_pool_json)} chars")
+                        logger.info(f"[select_player] ✓ Sample players: {[p['name'] for p in players_data[:5]]}")
+                    else:
+                        logger.error("[select_player] ❌ Draft has no player_pool or players attribute")
+                        player_pool_json = json.dumps([])
+                except Exception as e:
+                    logger.error(f"[select_player] ❌ Error loading player pool: {e}", exc_info=True)
+                    player_pool_json = json.dumps([])
+
+                # Parse player pool to create a simple name list for the agent
+                try:
+                    player_pool_data = json.loads(player_pool_json) if isinstance(player_pool_json, str) else player_pool_json
+                    
+                    # Create a simplified list with just names and positions for easier validation
+                    if isinstance(player_pool_data, list):
+                        simple_player_list = [
+                            {"name": p.get("name", ""), "position": p.get("position", "")} 
+                            for p in player_pool_data
+                        ]
+                        simple_player_list_str = json.dumps(simple_player_list, indent=2)
+                        
+                        logger.info(f"[select_player] Simplified player list has {len(simple_player_list)} players")
+                        logger.info(f"[select_player] Sample players: {simple_player_list[:5]}")
+                    else:
+                        simple_player_list_str = player_pool_json
+                        
+                except Exception as e:
+                    logger.warning(f"[select_player] Could not simplify player list: {e}")
+                    simple_player_list_str = player_pool_json
 
                 # Prepare agent instructions
                 drafter_message = drafter_agent_instructions(
@@ -142,7 +194,7 @@ class Team(BaseModel):
                     team_name=self.name, 
                     strategy=strategy, 
                     needed_positions=needed_positions, 
-                    availale_players=player_pool_json, 
+                    available_players=simple_player_list_str, 
                     round=round, 
                     pick=pick
                 )
@@ -151,7 +203,7 @@ class Team(BaseModel):
                     team_name=self.name, 
                     strategy=strategy, 
                     needed_positions=needed_positions, 
-                    available_players=player_pool_json
+                    available_players=simple_player_list_str
                 )
                 
                 team_context = TeamContext(
@@ -165,10 +217,6 @@ class Team(BaseModel):
                 )
 
                 if IS_LAMBDA:
-                    # ================================================================
-                    # Lambda environment - use Lambda MCP invokers
-                    # These invoke separate Lambda functions for MCP operations
-                    # ================================================================
                     logger.info("[select_player] Using Lambda MCP invokers (separate Lambda functions)")
                     
                     from backend.mcp_clients.lambda_mcp_invoker import (
@@ -176,7 +224,7 @@ class Team(BaseModel):
                         get_search_mcp_invoker
                     )
                     
-                    # Get invokers (these call separate Lambda functions)
+                    # Get invokers
                     draft_invoker = get_draft_mcp_invoker()
                     search_invoker = get_search_mcp_invoker()
                     
@@ -187,93 +235,142 @@ class Team(BaseModel):
                     draft_tools_raw = await draft_invoker.list_tools()
                     
                     logger.info(f"[select_player] Got {len(draft_tools_raw)} draft tools from MCP Lambda")
+                    logger.info(f"[select_player] Raw draft tools: {[t['name'] for t in draft_tools_raw]}")
                     
-                    # Convert MCP tools to agents library format
+                    # Helper function to fix schema for OpenAI compatibility
+                    def fix_schema_for_openai(schema):
+                        """Fix schema to meet OpenAI's strict requirements"""
+                        fixed_schema = schema.copy()
+                        
+                        # 1. Add additionalProperties: false if not present
+                        if 'additionalProperties' not in fixed_schema:
+                            fixed_schema['additionalProperties'] = False
+                        
+                        # 2. Ensure 'required' includes ALL properties (OpenAI requirement)
+                        if 'properties' in fixed_schema:
+                            all_property_keys = list(fixed_schema['properties'].keys())
+                            if 'required' not in fixed_schema:
+                                fixed_schema['required'] = all_property_keys
+                            else:
+                                # Merge existing required with all properties
+                                existing_required = set(fixed_schema['required'])
+                                all_props = set(all_property_keys)
+                                fixed_schema['required'] = list(existing_required.union(all_props))
+                        
+                        return fixed_schema
+                    
+                    # Helper function to create tool wrapper with proper closure
+                    def create_tool_wrapper(invoker, tool_name):
+                        """Create a tool wrapper function with proper closure binding"""
+                        async def tool_function(ctx, args):
+                            logger.info(f"[Tool] ===== TOOL CALLED: {tool_name} =====")
+                            logger.info(f"[Tool] Args: {args}")
+                            # Parse args if it's a string
+                            parsed_args = json.loads(args) if isinstance(args, str) else args
+                            logger.info(f"[Tool] Parsed args: {parsed_args}")
+                            result = await invoker.call_tool(tool_name, parsed_args)
+                            logger.info(f"[Tool] Result: {result}")
+                            return result
+                        return tool_function
+                    
+                    # Convert MCP tools to FunctionTool objects with fixed schemas
                     draft_tools = []
                     for tool_def in draft_tools_raw:
                         tool_name = tool_def['name']
+                        logger.info(f"[select_player] Processing draft tool: {tool_name}")
                         
-                        # Create wrapper function that invokes the Lambda
-                        async def create_tool_wrapper(invoker, name):
-                            async def tool_function(**kwargs):
-                                logger.info(f"[Tool Wrapper] Calling {name} via Lambda invoker")
-                                result = await invoker.call_tool(name, kwargs)
-                                logger.info(f"[Tool Wrapper] {name} result: {result.get('status', 'unknown')}")
-                                return result
-                            return tool_function
+                        # Fix schema for OpenAI compatibility
+                        schema = fix_schema_for_openai(tool_def['inputSchema'])
+                        logger.info(f"[select_player] Fixed schema for {tool_name}: {schema}")
                         
-                        tool_impl = await create_tool_wrapper(draft_invoker, tool_name)
+                        # Create tool wrapper with proper closure
+                        tool_wrapper = create_tool_wrapper(draft_invoker, tool_name)
                         
-                        # Format for agents library
-                        draft_tools.append({
-                            "type": "function",
-                            "function": {
-                                "name": tool_def['name'],
-                                "description": tool_def['description'],
-                                "parameters": tool_def['inputSchema']
-                            },
-                            "implementation": tool_impl
-                        })
+                        # Create FunctionTool object
+                        function_tool = FunctionTool(
+                            name=tool_def['name'],
+                            description=tool_def['description'],
+                            params_json_schema=schema,
+                            on_invoke_tool=tool_wrapper
+                        )
+                        
+                        draft_tools.append(function_tool)
+                        logger.info(f"[select_player] ✓ Added draft tool: {tool_name}")
                     
-                    logger.info(f"[select_player] Converted {len(draft_tools)} tools for agents")
+                    logger.info(f"[select_player] Total draft tools: {len(draft_tools)}")
+                    logger.info(f"[select_player] Draft tool names: {[t.name for t in draft_tools]}")
                     
-                    # Create drafter agent with tools
-                    drafter_agent = await self._create_agent(
-                        agent_name="Drafter",
+                    # Create drafter agent with FunctionTool objects
+                    logger.info(f"[select_player] Creating Drafter agent with {len(draft_tools)} tools")
+                    drafter_agent = Agent(
+                        name="Drafter",
+                        instructions=drafter_message,
+                        model="gpt-4o-mini",
                         tools=draft_tools,
-                        instructions=drafter_message
                     )
                     
-                    # For researcher, try to get search tools if available
+                    logger.info(f"[select_player] Drafter agent created. Agent tools: {getattr(drafter_agent, 'tools', 'NO TOOLS ATTR')}")
+                    
+                    # Get search tools
                     try:
                         search_tools_raw = await search_invoker.list_tools()
                         logger.info(f"[select_player] Got {len(search_tools_raw)} search tools")
+                        logger.info(f"[select_player] Raw search tools: {[t['name'] for t in search_tools_raw]}")
                         
                         researcher_tools = []
                         for tool_def in search_tools_raw:
                             tool_name = tool_def['name']
+                            logger.info(f"[select_player] Processing search tool: {tool_name}")
                             
-                            async def create_search_wrapper(invoker, name):
-                                async def tool_function(**kwargs):
-                                    logger.info(f"[Search Wrapper] Calling {name} via Lambda invoker")
-                                    result = await invoker.call_tool(name, kwargs)
-                                    return result
-                                return tool_function
+                            # Fix schema for OpenAI compatibility
+                            schema = fix_schema_for_openai(tool_def['inputSchema'])
+                            logger.info(f"[select_player] Fixed schema for {tool_name}: {schema}")
                             
-                            tool_impl = await create_search_wrapper(search_invoker, tool_name)
+                            # Create tool wrapper with proper closure
+                            tool_wrapper = create_tool_wrapper(search_invoker, tool_name)
                             
-                            researcher_tools.append({
-                                "type": "function",
-                                "function": {
-                                    "name": tool_def['name'],
-                                    "description": tool_def['description'],
-                                    "parameters": tool_def['inputSchema']
-                                },
-                                "implementation": tool_impl
-                            })
+                            # Create FunctionTool for search
+                            function_tool = FunctionTool(
+                                name=tool_def['name'],
+                                description=tool_def['description'],
+                                params_json_schema=schema,
+                                on_invoke_tool=tool_wrapper
+                            )
+                            
+                            researcher_tools.append(function_tool)
+                            logger.info(f"[select_player] ✓ Added search tool: {tool_name}")
+                        
+                        logger.info(f"[select_player] Total researcher tools: {len(researcher_tools)}")
+                        logger.info(f"[select_player] Researcher tool names: {[t.name for t in researcher_tools]}")
+                        
                     except Exception as e:
-                        logger.warning(f"Could not get search tools: {e}")
+                        logger.error(f"Could not get search tools: {e}", exc_info=True)
                         researcher_tools = []
                     
-                    researcher_agent = await self._create_agent(
-                        agent_name="Researcher",
+                    logger.info(f"[select_player] Creating Researcher agent with {len(researcher_tools)} tools")
+                    researcher_agent = Agent(
+                        name="Researcher",
+                        instructions=researcher_message,
+                        model="gpt-4o-mini",
                         tools=researcher_tools,
-                        instructions=researcher_message
                     )
                     
-                    # Run researcher
-                    logger.info("[select_player] Running Researcher agent...")
+                    logger.info(f"[select_player] Researcher agent created. Agent tools: {getattr(researcher_agent, 'tools', 'NO TOOLS ATTR')}")
+                    
+                    # Run agents
+                    logger.info("[select_player] ===== RUNNING RESEARCHER AGENT =====")
+                    logger.info(f"[select_player] Researcher has {len(researcher_tools)} tools available")
                     researcher_result = await Runner.run(
                         starting_agent=researcher_agent,
-                        input=team_input(),
+                        input=researcher_message,
                         context=team_context,
                         max_turns=RESEARCHER_MAX_TURNS
                     )
                     
                     logger.info(f"[select_player] Researcher output: {researcher_result.final_output}")
                     
-                    # Run drafter
-                    logger.info("[select_player] Running Drafter agent...")
+                    logger.info("[select_player] ===== RUNNING DRAFTER AGENT =====")
+                    logger.info(f"[select_player] Drafter has {len(draft_tools)} tools available")
                     drafter_result = await Runner.run(
                         starting_agent=drafter_agent,
                         input=f"Researcher recommendations: {researcher_result.final_output}",
@@ -284,9 +381,44 @@ class Team(BaseModel):
                     roster_with_selected_player = await read_team_roster_resource(draft.id.lower(), self.name.lower())
                     logger.info(f"Team {self.name} roster updated: {roster_with_selected_player}")
                     logger.info(f"Drafter output: {drafter_result.final_output}")
+                    # ====================================================================
+                    # CHECK IF DRAFT WAS SUCCESSFUL BY COMPARING ROSTER SIZE
+                    # ====================================================================
+                    logger.info("[select_player] Checking if draft was successful...")
+
+                    # Get roster before draft (we already have it as roster)
+                    roster_before_count = len([v for v in roster.values() if v is not None]) if roster else 0
+                    logger.info(f"[select_player] Roster count before draft: {roster_before_count}")
+
+                    # Get roster after draft
+                    roster_with_selected_player = await read_team_roster_resource(draft.id.lower(), self.name.lower())
+                    try:
+                        roster_after = json.loads(roster_with_selected_player) if isinstance(roster_with_selected_player, str) else roster_with_selected_player
+                        roster_after_count = len([v for v in roster_after.values() if v is not None]) if roster_after else 0
+                        logger.info(f"[select_player] Roster count after draft: {roster_after_count}")
+                    except Exception as e:
+                        logger.error(f"[select_player] Error parsing roster after draft: {e}")
+                        roster_after_count = roster_before_count  # Assume no change if error
+
+                    # Check if a player was actually drafted
+                    if roster_after_count <= roster_before_count:
+                        # NO PLAYER WAS DRAFTED - ALL ATTEMPTS FAILED
+                        error_msg = (
+                            f"DRAFT FAILED for {self.name} at Round {round}, Pick {pick}. "
+                            f"Agent attempted to draft players but all 50 attempts failed. "
+                            f"Drafter output: {drafter_result.final_output}"
+                        )
+                        logger.error(f"[select_player] {error_msg}")
+                        
+                        # Raise exception to stop draft execution
+                        raise Exception(error_msg)
+
+                    # Success - player was drafted
+                    logger.info(f"[select_player] ✓ Draft successful! Team {self.name} roster updated")
+                    logger.info(f"[select_player] Roster after: {roster_with_selected_player}")
+                    logger.info(f"[select_player] Drafter output: {drafter_result.final_output}")
                     
                     return str(drafter_result.final_output)
-                
                 else:
                     # ================================================================
                     # Local development - use stdio MCP servers
@@ -344,7 +476,7 @@ class Team(BaseModel):
                         logger.info("[select_player] Running Researcher agent...")
                         researcher_result = await Runner.run(
                             starting_agent=research_agent,
-                            input=team_input(),
+                            input=researcher_message,
                             context=team_context,
                             max_turns=RESEARCHER_MAX_TURNS
                         )
@@ -354,17 +486,50 @@ class Team(BaseModel):
                         # Run drafter
                         logger.info("[select_player] Running Drafter agent...")
                         drafter_result = await Runner.run(
-                            starting_agent=drafter_agent,
-                            input=f"Researcher recommendations: {researcher_result.final_output}",
-                            context=team_context,
-                            max_turns=DRAFTER_MAX_TURNS
+                        starting_agent=drafter_agent,
+                        input=f"Researcher recommendations: {researcher_result.final_output}",
+                        context=team_context,
+                        max_turns=DRAFTER_MAX_TURNS
+                    )
+
+                    # ====================================================================
+                    # CHECK IF DRAFT WAS SUCCESSFUL BY COMPARING ROSTER SIZE
+                    # ====================================================================
+                    logger.info("[select_player] Checking if draft was successful...")
+
+                    # Get roster before draft (we already have it as roster)
+                    roster_before_count = len([v for v in roster.values() if v is not None]) if roster else 0
+                    logger.info(f"[select_player] Roster count before draft: {roster_before_count}")
+
+                    # Get roster after draft
+                    roster_with_selected_player = await read_team_roster_resource(draft.id.lower(), self.name.lower())
+                    try:
+                        roster_after = json.loads(roster_with_selected_player) if isinstance(roster_with_selected_player, str) else roster_with_selected_player
+                        roster_after_count = len([v for v in roster_after.values() if v is not None]) if roster_after else 0
+                        logger.info(f"[select_player] Roster count after draft: {roster_after_count}")
+                    except Exception as e:
+                        logger.error(f"[select_player] Error parsing roster after draft: {e}")
+                        roster_after_count = roster_before_count  # Assume no change if error
+
+                    # Check if a player was actually drafted
+                    if roster_after_count <= roster_before_count:
+                        # NO PLAYER WAS DRAFTED - ALL ATTEMPTS FAILED
+                        error_msg = (
+                            f"DRAFT FAILED for {self.name} at Round {round}, Pick {pick}. "
+                            f"Agent attempted to draft players but all 5 attempts failed. "
+                            f"Drafter output: {drafter_result.final_output}"
                         )
+                        logger.error(f"[select_player] {error_msg}")
                         
-                        roster_with_selected_player = await read_team_roster_resource(draft.id.lower(), self.name.lower())
-                        logger.info(f"Team {self.name} roster updated: {roster_with_selected_player}")
-                        logger.info(f"Drafter output: {drafter_result.final_output}")
-                        
-                        return str(drafter_result.final_output)
+                        # Raise exception to propagate to frontend
+                        raise Exception(error_msg)
+
+                    # Success - player was drafted
+                    logger.info(f"[select_player] ✓ Draft successful! Team {self.name} roster updated")
+                    logger.info(f"[select_player] Roster after: {roster_with_selected_player}")
+                    logger.info(f"[select_player] Drafter output: {drafter_result.final_output}")
+
+                    return str(drafter_result.final_output)
                 
             except Exception as e:
                 logger.error(f"[select_player] Error: {e}", exc_info=True)

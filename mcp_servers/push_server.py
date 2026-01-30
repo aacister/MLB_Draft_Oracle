@@ -1,10 +1,10 @@
-#!/usr/bin/env python3
+import sys
+import os
 from dotenv import load_dotenv, find_dotenv
 from pathlib import Path
 import requests
 from pydantic import BaseModel, Field
-import sys
-import os
+
 
 load_dotenv(override=True, dotenv_path=find_dotenv())
 

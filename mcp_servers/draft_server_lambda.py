@@ -77,13 +77,30 @@ async def handle_tool_call_async(tool_name: str, arguments: dict) -> dict:
             logger.info(f"[draft_specific_player] ✓ Found player: {selected_player.name}")
             
             # Get team
-            team = Team.get(team_name)
-            logger.info(f"[draft_specific_player] ✓ Team loaded: {team.name}")
+            # Get team - case-insensitive lookup
+            logger.info(f"[draft_specific_player] Looking for team: {team_name}")
+            logger.info(f"[draft_specific_player] Available teams: {[t.name for t in draft.teams.teams]}")
+
+            # Case-insensitive team lookup
+            team_obj = next(
+                (t for t in draft.teams.teams if t.name.lower() == team_name.lower()), 
+                None
+            )
+
+            if not team_obj:
+                error_msg = f"Team '{team_name}' not found. Available teams: {[t.name for t in draft.teams.teams]}"
+                logger.error(f"[draft_specific_player] {error_msg}")
+                return {"status": "error", "error": error_msg}
+
+            logger.info(f"[draft_specific_player] ✓ Team loaded: {team_obj.name}")
+
+            # Note: team_obj is the actual Team object from draft.teams.teams
+            # We pass it directly to draft.draft_player()
             
             # Draft the player
             logger.info(f"[draft_specific_player] 🚀 Calling draft.draft_player()")
             result = await draft.draft_player(
-                team=team,
+                team=team_obj,
                 round=round_num,
                 pick=pick_num,
                 selected_player=selected_player,

@@ -108,14 +108,33 @@ async def draft_specific_player(draft_id, team_name, player_name, round_num, pic
         selected_player = next((p for p in available_players if p.name == player_name), None)
         
         if not selected_player:
-            error_msg = f"Player {player_name} not found in available players"
+            error_msg = f"Player '{player_name}' not found in available players"
             logger.error(f"[draft_specific_player] {error_msg}")
             
-            # Log available player names for debugging
-            available_names = [p.name for p in available_players[:10]]
-            logger.error(f"[draft_specific_player] First 10 available: {available_names}")
+            # Get ALL available player names
+            available_names = [p.name for p in available_players]
+            logger.error(f"[draft_specific_player] Total available players: {len(available_names)}")
+            logger.error(f"[draft_specific_player] First 20 available: {available_names[:20]}")
             
-            return json.dumps({"status": "error", "error": error_msg})
+            # Try to find similar names (helpful for debugging)
+            from difflib import get_close_matches
+            close_matches = get_close_matches(player_name, available_names, n=5, cutoff=0.6)
+            
+            if close_matches:
+                suggestion = f"Did you mean one of these? {', '.join(close_matches[:3])}"
+                error_msg = f"{error_msg}. {suggestion}"
+                logger.error(f"[draft_specific_player] Close matches found: {close_matches}")
+            else:
+                error_msg = f"{error_msg}. No similar names found in pool."
+            
+            # Return error with helpful context
+            return json.dumps({
+                "status": "error", 
+                "error": error_msg,
+                "player_attempted": player_name,
+                "suggestion": close_matches[0] if close_matches else None,
+                "available_count": len(available_names)
+            })
         
         logger.info(f"[draft_specific_player] ✓ Found player: {selected_player.name} (ID: {selected_player.id})")
         
@@ -216,37 +235,45 @@ async def read_draft_player_pool_available_resource(id: str) -> str:
             logger.error(f"[read_draft_player_pool_available_resource] Draft {id} not found")
             return json.dumps({"error": f"Draft {id} not found"})
         
-        available_players = draft.get_undrafted_players()
+        # Get player pool
+        player_pool = draft.player_pool
+        if not player_pool:
+            logger.error(f"[read_draft_player_pool_available_resource] Draft {id} has no player pool")
+            return json.dumps({"error": f"Draft {id} has no player pool"})
         
-        # Convert Player objects to JSON-serializable dicts
-        if isinstance(available_players, list):
-            players_data = [
-                {
-                    "id": p.id if hasattr(p, 'id') else None,
-                    "name": p.name if hasattr(p, 'name') else str(p),
-                    "position": p.position if hasattr(p, 'position') else None,
-                    "team": p.team if hasattr(p, 'team') else None,
-                }
-                for p in available_players
-            ]
-            logger.info(f"[read_draft_player_pool_available_resource] ✓ Returning {len(players_data)} available players")
-            return json.dumps(players_data)
-        else:
-            # If it's already a string, validate and return
-            if isinstance(available_players, str):
-                try:
-                    json.loads(available_players)
-                    return available_players
-                except json.JSONDecodeError:
-                    logger.error(f"[read_draft_player_pool_available_resource] Invalid JSON")
-                    return json.dumps({"error": "Invalid available players data"})
-            else:
-                return json.dumps(available_players)
+        logger.info(f"[read_draft_player_pool_available_resource] Player pool ID: {player_pool.id}")
+        
+        # Import Player model (adjust import based on your structure)
+        from backend.models.player import Player  # or wherever your Player model is
+        
+        # Query all players for this player pool that aren't drafted
+        available_players = await Player.filter(
+            player_pool_id=player_pool.id,
+            is_drafted=False
+        ).all()
+        
+        logger.info(f"[read_draft_player_pool_available_resource] Found {len(available_players)} available players")
+        
+        # Convert to JSON
+        players_data = []
+        for p in available_players:
+            player_dict = {
+                "id": p.id,
+                "name": p.name,
+                "position": p.position,
+                "team": p.team,
+            }
+            if hasattr(p, 'stats') and p.stats:
+                player_dict["stats"] = p.stats
+            players_data.append(player_dict)
+        
+        logger.info(f"[read_draft_player_pool_available_resource] ✓ Sample: {[p['name'] for p in players_data[:5]]}")
+        
+        return json.dumps(players_data)
                 
     except Exception as e:
         logger.error(f"[read_draft_player_pool_available_resource] Error: {e}", exc_info=True)
         return json.dumps({"error": str(e)})
-
 
 @mcp.resource("draft://team_roster/{id}/{team_name}")
 async def read_draft_team_roster_resource(id: str, team_name: str) -> str:

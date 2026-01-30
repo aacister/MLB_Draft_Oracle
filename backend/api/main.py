@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from backend.api import draft, draft_async, player_pool, players, teams, draft_history
+from backend.api import draft, draft_async, player_pool, players, teams, draft_history, admin
 import os
 from dotenv import load_dotenv, find_dotenv
 import logging
@@ -38,6 +38,7 @@ app.include_router(player_pool.router, prefix="/v1")
 app.include_router(players.router, prefix="/v1") 
 app.include_router(teams.router, prefix="/v1") 
 app.include_router(draft_history.router, prefix="/v1") 
+app.include_router(admin.router, prefix="/v1")
 
 
 @app.get("/health")

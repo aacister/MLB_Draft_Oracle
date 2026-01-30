@@ -49,11 +49,12 @@ const Header = ({
             </div>
 
             <div className="flex gap-2">
-              <ResearchButton
+       {/*       <ResearchButton
                 onClick={onResearch}
                 loading={researching}
                 disabled={isDraftRunning}
               />
+*/}
               <CreateDraftButton
                 onClick={onCreateDraft}
                 loading={creatingDraft}

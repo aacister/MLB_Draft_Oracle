@@ -183,7 +183,7 @@ class Draft(BaseModel):
     
     def roster_player(self, team: Team, player: Player):
         drafted_position_str = player.position
-        draft_team = next((t for t in self.teams.teams if t.name.lower() == team.name), None)
+        draft_team = next((t for t in self.teams.teams if t.name.lower() == team.name.lower()), None)
         if draft_team == None:
             print(f"Team {team.name} not found in {self.teams.teams}.")
             raise ValueError(f"Team {team.name} not found in {self.teams.teams}.")
@@ -192,8 +192,7 @@ class Draft(BaseModel):
 
     async def draft_player(self, team: Team, round: int, pick: int, selected_player: Player, rationale: str) -> DraftSelectionData:
         try:
-            draft_team = next((t for t in self.teams.teams if t.name.lower() == team.name), None)
-            needed_positions_set = draft_team.get_needed_positions()
+            needed_positions_set = team.get_needed_positions()
             if not needed_positions_set:
                 raise Exception(f"Error: Roster is full for team: {team.name}. Needed positions: {needed_positions_set}")
 

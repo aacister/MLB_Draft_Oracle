@@ -12,7 +12,7 @@ Do NOT prompt the user with questions.
 """
 
 
-def team_message(draft_id, team_name, strategy, needed_positions, availale_players, round, pick):
+def team_message(draft_id, team_name, strategy, needed_positions, available_players, round, pick):
     return f"""Based on your draft strategy, you should now look for new opportunities.
 Use the research tool to find news and opportunities consistent with your team's strategy,  and research players who exist in the list of
 available players and whose position exists in the list of needed poistions.
@@ -30,7 +30,7 @@ Your draft strategy:
 Your needed positions:
 {needed_positions}.
 Available players to draft from:
-{availale_players}
+{available_players}
 The current round is:
 {round}
 The current pick number is:
@@ -40,7 +40,7 @@ Here is the current datetime:
 
 Do not prompt user with questions.
 If you get rate limit errors on calls, wait 10 seconds, and try again.
-Now, carry out analysis, make your decision and draft only 1 player for your team from {availale_players} whose position exists in {needed_positions}, and that fits your strategy.
+Now, carry out analysis, make your decision and draft only 1 player for your team from {available_players} whose position exists in {needed_positions}, and that fits your strategy.
 After you've successfully drafted only 1 player using the draft_specific_player tool, respond with a brief 2-3 sentence appraisal of why you selected the player and how the player will improve your roster, and end further calls.
 Do NOT prompt the user with questions.
 """
@@ -120,183 +120,208 @@ def team_input():
     Then, draft one player you have researched. Do Not prompt user with questions.
 """
 
-def drafter_agent_instructions(draft_id, team_name, strategy, needed_positions, availale_players, round, pick): 
-    return f"""
-You are a fantasy baseball drafter. Draft EXACTLY ONE player using up to 5 attempts.
+def drafter_agent_instructions(draft_id, team_name, strategy, needed_positions, available_players, round, pick):
+    from datetime import datetime
+    return f"""You are a fantasy baseball drafter. Draft EXACTLY ONE player.
 
-**CRITICAL: YOU MUST TRY UP TO 5 DIFFERENT PLAYERS IF NEEDED**
+**AVAILABLE PLAYERS LIST:**
+{available_players}
 
-**ASYNC WORKFLOW - REPEAT UP TO 5 TIMES UNTIL SUCCESS:**
+**CRITICAL: Use the EXACT team name in your tool calls:**
+Team name: {team_name}
 
-FOR EACH ATTEMPT (1 through 5):
+When calling draft_specific_player(), you MUST use:
+  team_name="{team_name}"
 
-Step 1: Call draft_specific_player(...) with a NEW player from the available list
-   → Returns immediately: {{"status": "accepted", "task_id": "draft_XXXXXXXX", "player_name": "..."}}
+NOT:
+  team_name="{team_name.lower()}" or any other variation
 
-Step 2: **EXTRACT the task_id** from the response
-   Example: If response is {{"task_id": "draft_abc12345", ...}}, extract "draft_abc12345"
+**YOUR TASK:**
+Draft one player for {team_name} (Round {round}, Pick {pick}) using strategy: {strategy}
+Player must match one of these positions: {needed_positions}
 
-Step 3: Wait 2 seconds
+**MANDATORY PROCESS - UP TO 50 ATTEMPTS:**
 
-Step 4: Call check_draft_status(task_id="draft_XXXXXXXX") with the EXACT task_id
-   → Returns: {{"status": "processing"|"drafting"|"completed"|"error", ...}}
-
-Step 5: Keep polling check_draft_status every 2 seconds until:
-   - status="completed" with player_id → SUCCESS! STOP immediately
-   - status="error" → Player unavailable, try NEXT player
-   - Maximum 60 polling attempts per player
-
-**DETAILED EXAMPLE WITH MULTIPLE ATTEMPTS:**
-
-Attempt 1 (Player: Mike Trout):
-  You: draft_specific_player(draft_id="{draft_id}", team_name="{team_name}", 
-                             player_name="Mike Trout", round_num={round}, 
-                             pick_num={pick}, rationale="Best available hitter")
-  Response: {{"status": "accepted", "task_id": "draft_aaa111", "player_name": "Mike Trout"}}
+For each attempt (1 through 50):
   
-  You: [wait 2 seconds]
-  You: check_draft_status(task_id="draft_aaa111")
-  Response: {{"status": "processing", "message": "Drafting player..."}}
+  Step 1: Select a DIFFERENT player from the available_players list above
+          - Must match needed_positions: {needed_positions}
+          - Must not have been tried in previous attempts
+          - Verify name EXACTLY matches list
   
-  You: [wait 2 seconds]
-  You: check_draft_status(task_id="draft_aaa111")
-  Response: {{"status": "error", "error": "Player already drafted"}}
+  Step 2: Call draft_specific_player(
+            draft_id="{draft_id}",
+            team_name="{team_name}",
+            player_name="[Exact Name From List]",
+            round_num={round},
+            pick_num={pick},
+            rationale="[Why this player]"
+          )
   
-  → Player unavailable, proceed to Attempt 2
+  Step 3: **WAIT for the tool call to complete and return a result.**
+          DO NOT make another draft_specific_player call until you receive
+          the result from the previous call. Each call must complete before
+          starting the next attempt.
+  
+  Step 4: Check the response immediately:
+  Step 4: Check the response immediately:
+  
+          **IF status="completed":**
+          ✅ SUCCESS! The player is drafted!
+          Return: "Successfully drafted [Player Name] for {team_name}. [Brief rationale]"
+          **STOP IMMEDIATELY - DO NOT CALL draft_specific_player AGAIN**
+          **DO NOT ATTEMPT ANY MORE DRAFTS**
+          
+          **IF status="error":**
+          ❌ Draft failed. Note the error reason.
+          **IMPORTANT: If error says "Position X already filled", try a DIFFERENT position next time.**
+          If attempts < 50: Move to next attempt with a DIFFERENT player (and different position if error was "position filled").
+          If attempts = 50: Report failure (see below).
 
-Attempt 2 (Player: Aaron Judge):
-  You: draft_specific_player(draft_id="{draft_id}", team_name="{team_name}",
-                             player_name="Aaron Judge", round_num={round},
-                             pick_num={pick}, rationale="Power hitter, consistent")
-  Response: {{"status": "accepted", "task_id": "draft_bbb222", "player_name": "Aaron Judge"}}
-  
-  You: [wait 2 seconds]
-  You: check_draft_status(task_id="draft_bbb222")
-  Response: {{"status": "processing", "message": "Drafting player..."}}
-  
-  You: [wait 2 seconds]
-  You: check_draft_status(task_id="draft_bbb222")
-  Response: {{"status": "error", "error": "Player not found in available pool"}}
-  
-  → Player unavailable, proceed to Attempt 3
+**CRITICAL RULE - AVOID WASTING ATTEMPTS ON FILLED POSITIONS:**
+If you get error "Position C already filled":
+- Do NOT try another C player next
+- Try a player from a DIFFERENT position (1B, OF, P, etc.)
+- Track which positions give "already filled" errors and avoid them
 
-Attempt 3 (Player: Shohei Ohtani):
-  You: draft_specific_player(draft_id="{draft_id}", team_name="{team_name}",
-                             player_name="Shohei Ohtani", round_num={round},
-                             pick_num={pick}, rationale="Elite two-way player")
-  Response: {{"status": "accepted", "task_id": "draft_ccc333", "player_name": "Shohei Ohtani"}}
-  
-  You: [wait 2 seconds]
-  You: check_draft_status(task_id="draft_ccc333")
-  Response: {{"status": "drafting", "message": "Processing draft..."}}
-  
-  You: [wait 2 seconds]
-  You: check_draft_status(task_id="draft_ccc333")
-  Response: {{"status": "completed", "player_id": 660271, "player_name": "Shohei Ohtani"}}
-  
-  → SUCCESS! Return immediately: "Successfully drafted Shohei Ohtani"
+Example GOOD:
+  Attempt 1: Travis d'Arnaud (C) → Error: Position C already filled
+  Attempt 2: Christian Walker (1B) → Success!
 
-**STOPPING CONDITIONS:**
+Example BAD (don't do this):
+  Attempt 1: Travis d'Arnaud (C) → Error: Position C already filled
+  Attempt 2: Adley Rutschman (C) → Error: Position C already filled ← WRONG!
 
-✓ SUCCESS CASE:
-  - status="completed" with player_id → STOP immediately
-  - Return: "Successfully drafted [player_name]"
-  - DO NOT attempt more players
+**CRITICAL RULES FOR SEQUENTIAL EXECUTION:**
+1. **NEVER make multiple draft_specific_player calls in parallel**
+2. **ALWAYS wait for the result** from one call before making the next
+3. Each attempt is SEQUENTIAL: Call → Wait → Check result → Decide next action
+4. Do NOT queue up multiple draft_specific_player calls at once
 
-✗ ERROR CASES (try next player):
-  - Attempt 1 fails → Try Attempt 2 with different player
-  - Attempt 2 fails → Try Attempt 3 with different player
-  - Attempt 3 fails → Try Attempt 4 with different player
-  - Attempt 4 fails → Try Attempt 5 with different player
-  - Attempt 5 fails → Report DRAFT FAILED
+**CRITICAL STOPPING RULE:**
+When you receive {{"status": "completed", "player_name": "...", ...}}:
+1. Return a brief success message (1-2 sentences)
+2. STOP all tool calls immediately
+3. DO NOT attempt to draft any additional players
+4. DO NOT call draft_specific_player again
+5. Your job is DONE
 
-✗ ALL 5 ATTEMPTS FAILED:
-  You MUST return this exact format:
-  
-  "DRAFT FAILED: All 5 player attempts were unsuccessful.
-  
-  Players tried:
-  1. [Player 1 Name] - [Error reason]
-  2. [Player 2 Name] - [Error reason]
-  3. [Player 3 Name] - [Error reason]
-  4. [Player 4 Name] - [Error reason]
-  5. [Player 5 Name] - [Error reason]
-  
-  Please contact support or retry the draft for {team_name} at Round {round}, Pick {pick}."
+**ATTEMPT TRACKING:**
+Keep internal count of attempts:
+- Attempt 1: [Player Name] → [status="completed" or status="error"]
+- Attempt 2: [Player Name] → [status="completed" or status="error"]
+- ...
+- Stop at first "completed" OR after 50 attempts
 
-**PLAYER SELECTION STRATEGY:**
-For each attempt, select a DIFFERENT player from available players who:
-1. Plays a position in needed positions: {needed_positions}
-2. Fits the team strategy: {strategy}
-3. Hasn't been tried yet in previous attempts
-4. Is actually in the available players list
+**SUCCESS OUTPUT (when status="completed"):**
+"Successfully drafted [Player Name] for {team_name}. [Brief 1-2 sentence rationale]"
 
-**IMPORTANT RULES:**
-- Maximum 5 total calls to draft_specific_player
-- Maximum 60 calls to check_draft_status per player attempt
-- Always wait 2 seconds between status checks
+**FAILURE OUTPUT (after 50 failed attempts):**
+"DRAFT FAILED: All 50 attempts unsuccessful for {team_name} at Round {round}, Pick {pick}.
+
+Last 5 attempts:
+46. [Player Name] - [Error]
+47. [Player Name] - [Error]
+48. [Player Name] - [Error]
+49. [Player Name] - [Error]
+50. [Player Name] - [Error]
+
+Cannot complete draft."
+
+**VALIDATION:**
+Before calling draft_specific_player(), verify player_name appears EXACTLY in available_players list above.
+
+**RULES:**
+- DO attempt up to 50 different players if needed
+- DO select different players for each attempt
+- **DO wait for each draft_specific_player call to return before making the next call**
+- **DO execute attempts SEQUENTIALLY, never in parallel**
 - DO NOT retry the same player twice
-- DO NOT give up after 1-2 failures
-- DO NOT skip attempting all 5 players if needed
+- DO NOT draft players not in available_players
 - DO NOT prompt user with questions
+- DO NOT make multiple simultaneous draft_specific_player calls
+- **STOP IMMEDIATELY after first successful draft (status="completed")**
+- DO NOT continue after success
+- If all 50 attempts fail, the draft cannot continue
 
-**CONTEXT:**
-- Draft ID: {draft_id}
-- Team: {team_name}
-- Strategy: {strategy}
-- Needed positions: {needed_positions}
-- Round: {round}, Pick: {pick}
-
-**AVAILABLE PLAYERS:**
-{availale_players}
-
-**YOUR MISSION:**
-Try up to 5 different players until one succeeds. Do not give up until you've tried 5 players or successfully drafted one.
+Current time: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+Draft ID: {draft_id}
 """
 
 def researcher_agent_instructions(draft_id, team_name, strategy, needed_positions, available_players):
     return f"""
-You are a fantasy baseball researcher. Identify 3-5 players for ONE position.
+You are a fantasy baseball researcher for the 2025 MLB season.
 
-**CRITICAL: ONLY search for and recommend players from the 2025 MLB season.**
+**CRITICAL CONSTRAINT: You can ONLY recommend players from the provided available players list.**
 
-**PROCESS:**
-1. Select ONE position from needed positions: {needed_positions}
-2. Call brave_search_async with query that INCLUDES "2025 season" or "2025 MLB"
-   Example queries:
-   - "best catchers 2025 MLB season fantasy"
-   - "top pitchers 2025 season statistics"
-   - "first baseman 2025 MLB performance"
-3. The tool returns immediately with: {{"status": "accepted", "task_id": "search_xyz789"}}
-4. Wait 2 seconds, then call check_search_status with the task_id
-5. Keep checking every 2 seconds until status is "completed"
-6. When completed, parse the search results
-7. Identify 3-5 players from available players list who play that position
-8. **VERIFY players are from 2025 season data**
-9. Format and return your recommendations
+**YOUR PROCESS:**
 
-**TOOL CALL LIMIT:** Maximum 5 total tool calls
+Step 1: Parse the available players list
+Look at this JSON carefully: {available_players}
 
-**SEARCH REQUIREMENTS:**
-- Always include "2025 season" or "2025 MLB" in search queries
-- Focus on 2025 season statistics and performance
-- Do NOT use 2024 or earlier season data
-- Prioritize recent 2025 season news and stats
+Step 2: Filter by position
+From the available players, identify players who play one of these positions: {needed_positions}
+
+Step 3: Evaluate players
+For the players from Step 2, consider:
+- Strategy fit: {strategy}
+- 2025 season performance (use web search for recent stats)
+- Fantasy value
+
+Step 4: Return recommendations
+Recommend 3-5 players who are:
+a) IN the available players list (verified in Step 1)
+b) Play a needed position (verified in Step 2)
+c) Fit the team strategy
+
+**CRITICAL RULES:**
+1. DO NOT recommend players whose names don't appear in the available_players list
+2. DO NOT use web search to find new player names
+3. DO use web search to find stats/news about players already in the list
+4. If you find a player name via web search, CHECK if they're in available_players before recommending
+
+**CORRECT WORKFLOW EXAMPLE:**
+
+Step 1 - Parse list:
+Available players include: "Jose Altuve", "Aaron Judge", "Gerrit Cole", etc.
+
+Step 2 - Web search for stats:
+Search: "Jose Altuve 2025 season statistics"
+Search: "Aaron Judge 2025 season performance"
+
+Step 3 - Recommend from list:
+"Based on 2025 stats, I recommend:
+1. Jose Altuve (1B) - Available in pool, .285 avg in 2025
+2. Aaron Judge (OF) - Available in pool, 45 HR in 2025"
+
+**INCORRECT WORKFLOW (DO NOT DO THIS):**
+
+Step 1 - Web search for players:
+Search: "best first basemen 2025 MLB"
+Find: "Trevor Story, Freddie Freeman" (might not be in available_players!)
+
+Step 2 - Recommend without checking:
+"I recommend Trevor Story" ← ERROR! Not in available_players
 
 **OUTPUT FORMAT:**
-Target Position: [Position]
+Available Players at Position [Position]:
 
-1. [Player Name] - [2025 Stats] - [Rationale based on 2025 performance]
-2. [Player Name] - [2025 Stats] - [Rationale based on 2025 performance]
-3. [Player Name] - [2025 Stats] - [Rationale based on 2025 performance]
+1. [Player Name from available_players] - [2025 Stats from web search] - [Why they fit strategy]
+2. [Player Name from available_players] - [2025 Stats from web search] - [Why they fit strategy]
+3. [Player Name from available_players] - [2025 Stats from web search] - [Why they fit strategy]
 
 After providing list, STOP immediately.
+
+**TOOL USAGE:**
+- Use brave_search to find 2025 season stats for players already in the list
+- DO NOT use brave_search to discover new player names
+- Maximum 5 total tool calls
 
 **CONTEXT:**
 - Team: {team_name}
 - Strategy: {strategy}
-- Available players: {available_players}
 - **Season: 2025 ONLY**
+- **Available players (your ONLY source for player names): {available_players}**
 """
 
 def team_name_generator_instructions(num_of_teams: int): 
