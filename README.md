@@ -2,7 +2,7 @@
 
 > An AI-powered MLB fantasy draft simulator where autonomous agents compete to build the best team
 
-**[Live Demo](http://mlbdraftoracle.com)** | Available daily 2-4 PM EST
+**[Live Demo - mlbdraftoracle.com](http://mlbdraftoracle.com)** | Available daily 2-4 PM EST
 
 [![AWS](https://img.shields.io/badge/AWS-Lambda-orange)](https://aws.amazon.com/lambda/)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/)
@@ -196,9 +196,9 @@ Output: Selected player + strategic rationale
 ## 🖼️ Screenshots
 
 ### Draft History
-![Draft History showing AI pick rationales](https://github.com/aacister/MLB_Draft_Oracle/blob/master/AI_MlbDraftOracle/MlbDraftOracle_snapshot.PNG)
+![Draft History showing AI pick rationales](https://github.com/aacister/MLB_Draft_Oracle/blob/main/MlbDraftOracle_snapshot.PNG)
 
 ### Team Rosters
-![Final team rosters with player stats](https://github.com/aacister/MLB_Draft_Oracle/blob/master/AI_MlbDraftOracle/MlbDraftOracle_roster.PNG)
+![Final team rosters with player stats](https://github.com/aacister/MLB_Draft_Oracle/blob/main/MlbDraftOracle_roster.PNG)
 
 ---
