@@ -193,6 +193,9 @@ Output: Selected player + strategic rationale
 - **Active Hours**: 2-4 PM EST daily
 ---
 
+## API
+![API](https://github.com/aacister/MLB_Draft_Oracle/blob/main/mlb_draft_oracle_api.PNG)
+
 ## 🖼️ Screenshots
 
 ### Draft History
