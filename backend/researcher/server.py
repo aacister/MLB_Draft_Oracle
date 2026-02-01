@@ -37,7 +37,7 @@ async def run_research_agent() -> str:
             agent = Agent(
                 name="MLBDraftOracle Researcher",
                 instructions=get_agent_instructions(),
-                model="gpt-4o-mini",
+                model="gpt-41-mini",
                 tools=[ingest_knowledge_base_document],
                 mcp_servers=[mcp_server],
             )

@@ -5,7 +5,7 @@ async def get_researcher(mcp_servers) -> Agent:
     researcher = Agent(
         name="Researcher",
         instructions=researcher_instructions(),
-        model="gpt-4o-mini",
+        model="gpt-41-mini",
         mcp_servers=mcp_servers,
     )
     return researcher

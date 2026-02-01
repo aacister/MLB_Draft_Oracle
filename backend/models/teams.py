@@ -103,7 +103,7 @@ class Team(BaseModel):
         self._agent = Agent(
             name=agent_name,
             instructions=instructions,
-            model="gpt-4o-mini",  
+            model="gpt-41-mini",  
             tools=tools,
         )
         return self._agent
@@ -305,7 +305,7 @@ class Team(BaseModel):
                     drafter_agent = Agent(
                         name="Drafter",
                         instructions=drafter_message,
-                        model="gpt-4o-mini",
+                        model="gpt-41-mini",
                         tools=draft_tools,
                     )
                     
@@ -351,7 +351,7 @@ class Team(BaseModel):
                     researcher_agent = Agent(
                         name="Researcher",
                         instructions=researcher_message,
-                        model="gpt-4o-mini",
+                        model="gpt-41-mini",
                         tools=researcher_tools,
                     )
                     
@@ -457,7 +457,7 @@ class Team(BaseModel):
                         drafter_agent = Agent(
                             name="Drafter",
                             instructions=drafter_message,
-                            model="gpt-4o-mini",
+                            model="gpt-41-mini",
                             tools=draft_tools,
                             mcp_servers=drafter_mcp_servers,
                         )
@@ -467,7 +467,7 @@ class Team(BaseModel):
                         research_agent = Agent(
                             name="Researcher",
                             instructions=researcher_message,
-                            model="gpt-4o-mini",
+                            model="gpt-41-mini",
                             tools=[research_tool],
                             mcp_servers=researcher_mcp_servers,
                         )
