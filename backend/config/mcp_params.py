@@ -47,6 +47,7 @@ python_env = {
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY", ""),
     # Deployment environment
     "DEPLOYMENT_ENVIRONMENT": os.getenv("DEPLOYMENT_ENVIRONMENT", "LAMBDA" if IS_LAMBDA else "DEV"),
+    "S3_MEMORY_BUCKET": os.environ.get("S3_MEMORY_BUCKET", "mlbdraftoracle-memory-425865275846"),
 }
 
 # Clean up empty values to avoid issues
@@ -82,11 +83,13 @@ else:
         }
     ]
 
-# Knowledge base server configuration
-knowledgebase_mcp_server_params = [
+
+
+# RAG Search server configuration
+rag_search_mcp_server_params = [
     {
         "command": PYTHON_CMD,
-        "args": [f"{WORKING_DIR}/mcp_servers/knowledgebase_server.py"],
+        "args": [f"{WORKING_DIR}/backend/mcp_servers/rag_search_server.py"],
         "working_directory": WORKING_DIR,
         "env": python_env
     }

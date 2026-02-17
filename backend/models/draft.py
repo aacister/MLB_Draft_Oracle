@@ -16,6 +16,7 @@ from backend.mcp_clients.draft_client import read_team_roster_resource, read_dra
 from backend.utils.util import NO_OF_TEAMS, NO_OF_ROUNDS
 from backend.draft_agents.draft_name_generator.draft_name_generator_agent import get_draft_name_generator
 from backend.templates.templates import draft_name_generator_message
+from backend.data.s3_history import save_draft_to_s3
 # MEMORY STORAGE DISABLED - Using PostgreSQL RDS only
 # from backend.data.memory import save_draft_state, load_draft_state
 from agents import Runner
@@ -24,6 +25,8 @@ import math
 import os
 
 use_local_db = True
+
+logger = logging.getLogger(__name__)
 
 class Draft(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
@@ -61,24 +64,27 @@ class Draft(BaseModel):
     
     @classmethod
     async def get(cls, id: Optional[str]):
-        # Generate draft name first (MOVED OUTSIDE the if block)
-        draft_name_generator_agent = await get_draft_name_generator()
-        message = draft_name_generator_message()
-        result = await Runner.run(draft_name_generator_agent, message)
-        draft_name = result.final_output
-        if(id is None):
+        """Get existing draft or create new draft with generated name"""
+        
+        # Generate ID if not provided
+        if id is None:
             id = str(uuid.uuid4())
-            draft_name_generator_agent = await get_draft_name_generator()
-            message = draft_name_generator_message()
-            result = await Runner.run(draft_name_generator_agent, message)
-            draft_name = result.final_output        
-
+            logger.info(f"No draft ID provided, generated new ID: {id}")
+        
         import ast
         
         # Load from PostgreSQL database only (memory storage disabled)
         fields = read_draft(id.lower())
         
         if not fields:
+            # ✨ ONLY generate draft name when creating NEW draft
+            logger.info(f"Creating NEW draft {id} - generating draft name...")
+            draft_name_generator_agent = await get_draft_name_generator()
+            message = draft_name_generator_message()
+            result = await Runner.run(draft_name_generator_agent, message)
+            draft_name = result.final_output
+            logger.info(f"Generated draft name: {draft_name}")
+            
             # Initialize teams first
             teams = await DraftTeams.get(id.lower(), NO_OF_TEAMS)
             player_pool = await PlayerPool.get(id=None)
@@ -97,6 +103,9 @@ class Draft(BaseModel):
             # Save to PostgreSQL database only
             write_draft(id.lower(), fields)
             await DraftHistory.get(id.lower())
+            logger.info(f"✅ New draft {id} created and saved")
+        else:
+            logger.info(f"Loading EXISTING draft {id} (name: {fields.get('name', 'Unknown')})")
         
         # Ensure teams is properly loaded from fields
         if fields and 'teams' in fields and fields['teams'] is not None:
@@ -226,6 +235,34 @@ class Draft(BaseModel):
             
             # Save to PostgreSQL database only (memory storage disabled)
             self.save()
+
+            # ✨ NEW: Save to S3 after EVERY pick for real-time agent context
+            try:
+                from backend.data.s3_history import save_draft_to_s3
+                logger.info(f"Archiving pick to S3: Round {round}, Pick {pick}")
+                
+                archive_result = await save_draft_to_s3(
+                    draft_id=self.id,
+                    draft_picks=history.items,
+                    teams=self.teams.teams,
+                    metadata={
+                        'draft_name': self.name,
+                        'num_rounds': self.num_rounds,
+                        'is_complete': self.is_complete,
+                        'current_round': round,
+                        'current_pick': pick
+                    }
+                )
+                
+                if archive_result['success']:
+                    logger.info(f"✅ Pick archived to S3: {archive_result['location']}")
+                else:
+                    logger.warning(f"⚠️ S3 archive failed: {archive_result.get('error')}")
+                    
+            except Exception as s3_error:
+                # Don't fail the draft if S3 save fails
+                logger.error(f"Non-critical S3 save error: {s3_error}")
+            
             
             print(f"Team {team.name} drafted {selected_player.id}: {selected_player.name} ({selected_player.position} in round {round}.")
             return DraftSelectionData(reason=rationale, player_id=selected_player.id, player_name=selected_player.name)
@@ -312,3 +349,44 @@ class Draft(BaseModel):
             
             print(f"Error running MLB Draft Oracle simulation: {e}")
             raise
+
+    # Add this method to the Draft class (around line 230, after the save() method)
+    async def archive_to_s3(self) -> Dict:
+        """
+        Archive completed draft to S3 for RAG indexing
+        Call this when draft is complete
+        
+        Returns:
+            Dict with S3 save result
+        """
+        try:
+            logger.info(f"Archiving draft {self.id} to S3...")
+            
+            # Get draft history
+            history = await DraftHistory.get(self.id.lower())
+            
+            # Save to S3
+            result = await save_draft_to_s3(
+                draft_id=self.id,
+                draft_picks=history.items,
+                teams=self.teams.teams,
+                metadata={
+                    'draft_name': self.name,
+                    'num_rounds': self.num_rounds,
+                    'is_complete': self.is_complete
+                }
+            )
+            
+            if result['success']:
+                logger.info(f"✅ Draft archived to S3: {result['location']}")
+            else:
+                logger.error(f"❌ Failed to archive draft: {result.get('error')}")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error archiving draft to S3: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e)
+            }

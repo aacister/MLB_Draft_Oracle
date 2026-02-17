@@ -45,6 +45,24 @@ async def handle_tool_call_async(tool_name: str, arguments: dict) -> dict:
                 logger.error(f"[draft_specific_player] {error_msg}")
                 return {"status": "error", "error": error_msg}
             
+            # IDEMPOTENCY CHECK: If this pick already exists, return success immediately
+            history = await DraftHistory.get(draft_id.lower())
+            existing_pick = next(
+                (item for item in history.items
+                 if item.round == round_num and item.pick == pick_num and item.selection),
+                None
+            )
+            if existing_pick:
+                logger.info(f"[draft_specific_player] Pick R{round_num}P{pick_num} already completed: {existing_pick.selection} - skipping re-draft")
+                return {
+                    "status": "completed",
+                    "player_name": existing_pick.selection,
+                    "round": round_num,
+                    "pick": pick_num,
+                    "rationale": "Already drafted - returning existing pick",
+                    "already_drafted": True
+                }
+            
             # Ensure player pool
             if draft.player_pool is None:
                 logger.info(f"[draft_specific_player] Loading player pool")

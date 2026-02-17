@@ -1,5 +1,43 @@
 from datetime import datetime
 
+def get_draft_context_instruction():
+    """
+    Instruction for agents to use S3 draft history for context via RAG search.
+    To be included in researcher and drafter instructions.
+    """
+    return """
+**CRITICAL: Your team's current roster status is available in real-time via RAG search.**
+
+Before making any recommendations or draft decisions:
+1. Call search_draft_context("What positions has [YOUR TEAM NAME] already filled?")
+   OR call get_team_roster_status(team_name="[YOUR TEAM NAME]", draft_id="[DRAFT ID]")
+2. Review the filled_positions to see what you already have
+3. Review the needed_positions to see what you still need
+4. NEVER recommend or draft a player for a position in filled_positions
+5. ONLY recommend or draft players for positions in needed_positions
+
+**HOW TO USE RAG TOOLS:**
+
+Option 1: Natural language search
+```
+search_draft_context("What positions has PowerHouse already filled?")
+→ Returns: "PowerHouse has filled: C (Salvador Perez), 1B (Vladimir Guerrero Jr.)"
+```
+
+Option 2: Direct roster query
+```
+get_team_roster_status(team_name="PowerHouse", draft_id="draft_2026-02-11")
+→ Returns: {"filled_positions": [...], "needed_positions": [...]}
+```
+
+This information is updated after every pick, so it reflects the exact current state.
+
+**WHY THIS MATTERS:**
+- Prevents wasting attempts on positions already filled
+- Ensures you only recommend/draft for actual needs
+- Saves time and avoids "Position already filled" errors
+"""
+
 def team_instructions(draft_id, name, strategy, needed_positions, available_players, round, pick):
     return f"""
 Your team name is {name}, participating in the fantasy baseball draft {draft_id}. Your strategy is {strategy}. Needed positions are {needed_positions}. Follow these steps strictly in sequence to draft exactly one player per round:
@@ -122,7 +160,18 @@ def team_input():
 
 def drafter_agent_instructions(draft_id, team_name, strategy, needed_positions, available_players, round, pick):
     from datetime import datetime
-    return f"""You are a fantasy baseball drafter. Draft EXACTLY ONE player.
+    context_instruction = get_draft_context_instruction()
+    
+    return f"""
+You are a fantasy baseball drafter. Draft EXACTLY ONE player.
+
+{context_instruction}
+
+**YOUR TEAM'S CURRENT NEEDS:**
+Needed positions: {needed_positions}
+
+⚠️ NOTE: If the researcher already checked roster status via RAG, trust their filtered recommendations.
+If NOT, you can optionally verify with: get_team_roster_status(team_name="{team_name}", draft_id="{draft_id}")
 
 **AVAILABLE PLAYERS LIST:**
 {available_players}
@@ -249,76 +298,110 @@ Draft ID: {draft_id}
 """
 
 def researcher_agent_instructions(draft_id, team_name, strategy, needed_positions, available_players):
+    context_instruction = get_draft_context_instruction()
+    
     return f"""
 You are a fantasy baseball researcher for the 2025 MLB season.
+
+{context_instruction}
+
+**STEP 0: CHECK ROSTER STATUS FIRST (MANDATORY)**
+
+Before doing ANY research, you MUST check your team's current roster:
+
+Call: search_draft_context("What positions has {team_name} already filled?")
+OR
+Call: get_team_roster_status(team_name="{team_name}", draft_id="{draft_id}")
+
+This tells you which positions are ALREADY DRAFTED. Do NOT waste time researching players for those positions.
+
+**YOUR TEAM'S INITIAL NEEDS (MAY BE OUTDATED):**
+Needed positions: {needed_positions}
+
+⚠️ WARNING: The needed_positions above might be stale. Always use RAG search to get current status!
 
 **CRITICAL CONSTRAINT: You can ONLY recommend players from the provided available players list.**
 
 **YOUR PROCESS:**
 
-Step 1: Parse the available players list
+Step 1: **CHECK ROSTER (MANDATORY)**
+Call search_draft_context() or get_team_roster_status() to get current filled/needed positions
+
+Step 2: Parse the available players list
 Look at this JSON carefully: {available_players}
 
-Step 2: Filter by position
-From the available players, identify players who play one of these positions: {needed_positions}
+Step 3: Filter by CURRENT needed positions (from Step 1, NOT the initial list)
+From the available players, identify players who play one of the NEEDED positions
+Skip any players who play positions already in filled_positions
 
-Step 3: Evaluate players
-For the players from Step 2, consider:
+Step 4: Evaluate players (only for needed positions)
+For the players from Step 3, consider:
 - Strategy fit: {strategy}
 - 2025 season performance (use web search for recent stats)
 - Fantasy value
 
-Step 4: Return recommendations
+Step 5: Return recommendations
 Recommend 3-5 players who are:
-a) IN the available players list (verified in Step 1)
-b) Play a needed position (verified in Step 2)
-c) Fit the team strategy
+a) IN the available players list (verified in Step 2)
+b) Play a NEEDED position (verified in Step 1 via RAG)
+c) NOT playing a position in filled_positions
+d) Fit the team strategy
 
-**CRITICAL RULES:**
-1. DO NOT recommend players whose names don't appear in the available_players list
-2. DO NOT use web search to find new player names
-3. DO use web search to find stats/news about players already in the list
-4. If you find a player name via web search, CHECK if they're in available_players before recommending
+**EXAMPLE CORRECT WORKFLOW:**
 
-**CORRECT WORKFLOW EXAMPLE:**
+Step 1 - Check roster:
+```
+search_draft_context("What positions has {team_name} filled?")
+→ Response: "Filled: C (Salvador Perez), 1B (Vlad Jr.)"
+→ So needed_positions = ["OF", "P"] (not C or 1B anymore)
+```
 
-Step 1 - Parse list:
+Step 2 - Parse available players list:
 Available players include: "Jose Altuve", "Aaron Judge", "Gerrit Cole", etc.
 
-Step 2 - Web search for stats:
-Search: "Jose Altuve 2025 season statistics"
-Search: "Aaron Judge 2025 season performance"
+Step 3 - Filter by NEEDED positions (OF, P):
+From list: Aaron Judge (OF), Gerrit Cole (P)
+Skip: Salvador Perez (C - already filled), Jose Altuve (1B - already filled)
 
-Step 3 - Recommend from list:
-"Based on 2025 stats, I recommend:
-1. Jose Altuve (1B) - Available in pool, .285 avg in 2025
-2. Aaron Judge (OF) - Available in pool, 45 HR in 2025"
+Step 4 - Web search for stats (only for OF/P):
+Search: "Aaron Judge 2025 season statistics"
+Search: "Gerrit Cole 2025 season performance"
 
-**INCORRECT WORKFLOW (DO NOT DO THIS):**
+Step 5 - Recommend (only OF/P):
+"Based on current roster needs and 2025 stats, I recommend:
+1. Aaron Judge (OF) - Available in pool, 45 HR in 2025
+2. Gerrit Cole (P) - Available in pool, 2.75 ERA in 2025"
 
-Step 1 - Web search for players:
-Search: "best first basemen 2025 MLB"
-Find: "Trevor Story, Freddie Freeman" (might not be in available_players!)
-
-Step 2 - Recommend without checking:
-"I recommend Trevor Story" ← ERROR! Not in available_players
+**CRITICAL RULES:**
+1. ALWAYS check roster via RAG before researching (Step 1)
+2. DO NOT recommend players for positions in filled_positions
+3. DO NOT recommend players whose names don't appear in available_players
+4. DO NOT use web search to find new player names
+5. DO use web search to find stats/news about players already in the list
+6. If you find a player name via web search, CHECK if they're in available_players before recommending
 
 **OUTPUT FORMAT:**
-Available Players at Position [Position]:
+Current Roster Status:
+- Filled: [positions from RAG]
+- Needed: [positions from RAG]
 
-1. [Player Name from available_players] - [2025 Stats from web search] - [Why they fit strategy]
-2. [Player Name from available_players] - [2025 Stats from web search] - [Why they fit strategy]
-3. [Player Name from available_players] - [2025 Stats from web search] - [Why they fit strategy]
+Recommended Players:
+
+1. [Player Name from available_players] (Position) - [2025 Stats from web search] - [Why they fit strategy]
+2. [Player Name from available_players] (Position) - [2025 Stats from web search] - [Why they fit strategy]
+3. [Player Name from available_players] (Position) - [2025 Stats from web search] - [Why they fit strategy]
 
 After providing list, STOP immediately.
 
 **TOOL USAGE:**
-- Use brave_search to find 2025 season stats for players already in the list
+- search_draft_context or get_team_roster_status: Check current roster (FIRST)
+- brave_search: Find 2025 season stats for players already in the list
 - DO NOT use brave_search to discover new player names
-- Maximum 5 total tool calls
+- Maximum 7 total tool calls (1 for roster check + 5 for research + 1 for final check if needed)
 
 **CONTEXT:**
 - Team: {team_name}
+- Draft ID: {draft_id}
 - Strategy: {strategy}
 - **Season: 2025 ONLY**
 - **Available players (your ONLY source for player names): {available_players}**

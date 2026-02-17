@@ -187,3 +187,97 @@ async def get_database_stats():
             status_code=500,
             detail=f"Failed to fetch database stats: {str(e)}"
         )
+
+
+@router.get("/admin/export-draft")
+async def export_draft_data():
+    """
+    Export complete draft data for S3 archival.
+    Called by StopDraftSite Lambda before cleanup.
+    
+    Returns:
+        Complete draft data including picks, teams, strategies
+    """
+    logger.info("=" * 80)
+    logger.info("EXPORT DRAFT DATA REQUESTED")
+    logger.info("=" * 80)
+    
+    try:
+        from backend.data.postgresql.unified_db import read_drafts
+        from backend.models.draft_history import DraftHistory
+        from backend.models.draft import Draft
+        
+        # Get all drafts (should be 1 active draft)
+        drafts = read_drafts()
+        
+        if not drafts or len(drafts) == 0:
+            logger.warning("No drafts found in database")
+            raise HTTPException(status_code=404, detail="No draft found to export")
+        
+        # Get the most recent draft (last in list)
+        latest_draft_data = drafts[-1]
+        draft_id = latest_draft_data.get('id')
+        
+        logger.info(f"Exporting draft: {draft_id}")
+        
+        # Load full draft object
+        draft = await Draft.get(draft_id)
+        
+        # Get draft history
+        history = await DraftHistory.get(draft_id)
+        
+        # Format teams
+        formatted_teams = []
+        for team in draft.teams.teams:
+            formatted_teams.append({
+                'name': team.name,
+                'strategy': team.strategy,
+                'roster': {k: v.to_dict() if v else None for k, v in team.roster.items()},
+                'total_picks': len([p for p in history.items if p.team == team.name and p.selection])
+            })
+        
+        # Format picks
+        formatted_picks = []
+        for item in history.items:
+            if item.selection:  # Only include completed picks
+                formatted_picks.append({
+                    'draft_id': draft_id,
+                    'round': item.round,
+                    'pick': item.pick,
+                    'team': item.team,
+                    'selection': item.selection,
+                    'rationale': item.rationale
+                })
+        
+        # Create export data
+        export_data = {
+            'draft_id': draft_id,
+            'name': draft.name,
+            'exported_at': str(datetime.utcnow()),
+            'total_picks': len(formatted_picks),
+            'total_rounds': draft.num_rounds,
+            'is_complete': draft.is_complete,
+            'teams': formatted_teams,
+            'picks': formatted_picks
+        }
+        
+        logger.info(f"✓ Exported {len(formatted_picks)} picks from draft {draft_id}")
+        logger.info("=" * 80)
+        
+        return JSONResponse(
+            status_code=200,
+            content=export_data
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error exporting draft data: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to export draft: {str(e)}"
+        )
+
+
+# Import datetime for export endpoint
+from datetime import datetime

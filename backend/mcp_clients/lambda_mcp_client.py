@@ -158,10 +158,6 @@ def get_draft_mcp_client() -> LambdaMCPClient:
     return LambdaMCPClient(function_name)
 
 
-def get_knowledgebase_mcp_client() -> LambdaMCPClient:
-    """Get Lambda MCP client for knowledgebase server"""
-    function_name = os.getenv('KNOWLEDGEBASE_MCP_LAMBDA', 'mlb-draft-oracle-mcp-knowledgebase')
-    return LambdaMCPClient(function_name)
 
 
 def get_brave_search_mcp_client() -> LambdaMCPClient:

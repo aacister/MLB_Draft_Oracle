@@ -49,6 +49,16 @@ async def execute_draft_pick_async(draft_id, team_name, round_num, pick_num):
         
         logger.info(f"[Worker] ✓ Draft pick completed")
         logger.info(f"[Worker] Result: {result}")
+
+        # *** NEW: Check if draft is complete and archive to S3 ***
+        if draft.is_complete:
+            logger.info(f"[Worker] 🎉 Draft is complete! Archiving to S3...")
+            archive_result = await draft.archive_to_s3()
+            if archive_result['success']:
+                logger.info(f"[Worker] ✅ Draft archived: {archive_result['location']}")
+            else:
+                logger.warning(f"[Worker] ⚠️  Archive failed: {archive_result.get('error')}")
+        
         logger.info(f"[Worker] ===== SUCCESS =====")
         
         return {

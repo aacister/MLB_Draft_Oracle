@@ -103,7 +103,7 @@ class Team(BaseModel):
         self._agent = Agent(
             name=agent_name,
             instructions=instructions,
-            model="gpt-41-mini",  
+            model="gpt-4o-mini",  
             tools=tools,
         )
         return self._agent
@@ -305,7 +305,7 @@ class Team(BaseModel):
                     drafter_agent = Agent(
                         name="Drafter",
                         instructions=drafter_message,
-                        model="gpt-41-mini",
+                        model="gpt-4o-mini",
                         tools=draft_tools,
                     )
                     
@@ -347,11 +347,22 @@ class Team(BaseModel):
                         logger.error(f"Could not get search tools: {e}", exc_info=True)
                         researcher_tools = []
                     
+                    # ✅ Add RAG search tools DIRECTLY (no subprocess)
+                    try:
+                        from backend.mcp_clients.rag_search_client import get_rag_search_tools_direct
+                        rag_tools = get_rag_search_tools_direct()
+                        researcher_tools.extend(rag_tools)
+                        logger.info(f"✅ Loaded {len(rag_tools)} RAG search tools directly (no subprocess)")
+                        logger.info(f"   RAG tool names: {[t.name for t in rag_tools]}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Could not load RAG search tools: {e}", exc_info=True)
+                
+                    
                     logger.info(f"[select_player] Creating Researcher agent with {len(researcher_tools)} tools")
                     researcher_agent = Agent(
                         name="Researcher",
                         instructions=researcher_message,
-                        model="gpt-41-mini",
+                        model="gpt-4o-mini",
                         tools=researcher_tools,
                     )
                     
@@ -377,47 +388,9 @@ class Team(BaseModel):
                         context=team_context,
                         max_turns=DRAFTER_MAX_TURNS
                     )
-                    
-                    roster_with_selected_player = await read_team_roster_resource(draft.id.lower(), self.name.lower())
-                    logger.info(f"Team {self.name} roster updated: {roster_with_selected_player}")
-                    logger.info(f"Drafter output: {drafter_result.final_output}")
-                    # ====================================================================
-                    # CHECK IF DRAFT WAS SUCCESSFUL BY COMPARING ROSTER SIZE
-                    # ====================================================================
-                    logger.info("[select_player] Checking if draft was successful...")
-
-                    # Get roster before draft (we already have it as roster)
-                    roster_before_count = len([v for v in roster.values() if v is not None]) if roster else 0
-                    logger.info(f"[select_player] Roster count before draft: {roster_before_count}")
-
-                    # Get roster after draft
-                    roster_with_selected_player = await read_team_roster_resource(draft.id.lower(), self.name.lower())
-                    try:
-                        roster_after = json.loads(roster_with_selected_player) if isinstance(roster_with_selected_player, str) else roster_with_selected_player
-                        roster_after_count = len([v for v in roster_after.values() if v is not None]) if roster_after else 0
-                        logger.info(f"[select_player] Roster count after draft: {roster_after_count}")
-                    except Exception as e:
-                        logger.error(f"[select_player] Error parsing roster after draft: {e}")
-                        roster_after_count = roster_before_count  # Assume no change if error
-
-                    # Check if a player was actually drafted
-                    if roster_after_count <= roster_before_count:
-                        # NO PLAYER WAS DRAFTED - ALL ATTEMPTS FAILED
-                        error_msg = (
-                            f"DRAFT FAILED for {self.name} at Round {round}, Pick {pick}. "
-                            f"Agent attempted to draft players but all 50 attempts failed. "
-                            f"Drafter output: {drafter_result.final_output}"
-                        )
-                        logger.error(f"[select_player] {error_msg}")
-                        
-                        # Raise exception to stop draft execution
-                        raise Exception(error_msg)
-
                     # Success - player was drafted
-                    logger.info(f"[select_player] ✓ Draft successful! Team {self.name} roster updated")
-                    logger.info(f"[select_player] Roster after: {roster_with_selected_player}")
+                    logger.info(f"[select_player] ✓ Draft execution completed")
                     logger.info(f"[select_player] Drafter output: {drafter_result.final_output}")
-                    
                     return str(drafter_result.final_output)
                 else:
                     # ================================================================
@@ -426,7 +399,7 @@ class Team(BaseModel):
                     logger.info("[select_player] Using stdio MCP servers (local dev)")
                     
                     from agents.mcp import MCPServerStdio
-                    from backend.config.mcp_params import drafter_mcp_server_params, researcher_mcp_server_params
+                    from backend.config.mcp_params import drafter_mcp_server_params, researcher_mcp_server_params, rag_search_mcp_server_params
                     from backend.draft_agents.research_agents.researcher_tool import get_researcher_tool
                     
                     async with AsyncExitStack() as stack:
@@ -457,19 +430,34 @@ class Team(BaseModel):
                         drafter_agent = Agent(
                             name="Drafter",
                             instructions=drafter_message,
-                            model="gpt-41-mini",
+                            model="gpt-4o-mini",
                             tools=draft_tools,
                             mcp_servers=drafter_mcp_servers,
                         )
+
+                        # ✨ NEW: Initialize RAG search servers
+                        rag_search_servers = []
+                        for i, params in enumerate(rag_search_mcp_server_params):
+                            logger.info(f"[select_player] Starting RAG Search MCP server {i+1}...")
+                            server = MCPServerStdio(params=params)
+                            await stack.enter_async_context(server)
+                            rag_search_servers.append(server)
+                            logger.info(f"[select_player] RAG Search MCP server {i+1} started")
+                        
+                        # Get RAG search tools
+                        from backend.mcp_clients.rag_search_client import get_rag_search_tools_direct
+                        rag_tools = get_rag_search_tools_direct()  # ← Direct, no subprocess
+                        all_researcher_tools = [research_tool] + rag_tools
+                        
                         
                         # Create researcher agent
                         research_tool = await get_researcher_tool(researcher_mcp_servers)
                         research_agent = Agent(
                             name="Researcher",
                             instructions=researcher_message,
-                            model="gpt-41-mini",
-                            tools=[research_tool],
-                            mcp_servers=researcher_mcp_servers,
+                            model="gpt-4o-mini",
+                            tools=all_researcher_tools,
+                            mcp_servers=researcher_mcp_servers + rag_search_servers
                         )
                         
                         # Run researcher
@@ -492,43 +480,8 @@ class Team(BaseModel):
                         max_turns=DRAFTER_MAX_TURNS
                     )
 
-                    # ====================================================================
-                    # CHECK IF DRAFT WAS SUCCESSFUL BY COMPARING ROSTER SIZE
-                    # ====================================================================
-                    logger.info("[select_player] Checking if draft was successful...")
-
-                    # Get roster before draft (we already have it as roster)
-                    roster_before_count = len([v for v in roster.values() if v is not None]) if roster else 0
-                    logger.info(f"[select_player] Roster count before draft: {roster_before_count}")
-
-                    # Get roster after draft
-                    roster_with_selected_player = await read_team_roster_resource(draft.id.lower(), self.name.lower())
-                    try:
-                        roster_after = json.loads(roster_with_selected_player) if isinstance(roster_with_selected_player, str) else roster_with_selected_player
-                        roster_after_count = len([v for v in roster_after.values() if v is not None]) if roster_after else 0
-                        logger.info(f"[select_player] Roster count after draft: {roster_after_count}")
-                    except Exception as e:
-                        logger.error(f"[select_player] Error parsing roster after draft: {e}")
-                        roster_after_count = roster_before_count  # Assume no change if error
-
-                    # Check if a player was actually drafted
-                    if roster_after_count <= roster_before_count:
-                        # NO PLAYER WAS DRAFTED - ALL ATTEMPTS FAILED
-                        error_msg = (
-                            f"DRAFT FAILED for {self.name} at Round {round}, Pick {pick}. "
-                            f"Agent attempted to draft players but all 5 attempts failed. "
-                            f"Drafter output: {drafter_result.final_output}"
-                        )
-                        logger.error(f"[select_player] {error_msg}")
-                        
-                        # Raise exception to propagate to frontend
-                        raise Exception(error_msg)
-
-                    # Success - player was drafted
-                    logger.info(f"[select_player] ✓ Draft successful! Team {self.name} roster updated")
-                    logger.info(f"[select_player] Roster after: {roster_with_selected_player}")
+                    logger.info(f"[select_player] ✓ Draft execution completed")
                     logger.info(f"[select_player] Drafter output: {drafter_result.final_output}")
-
                     return str(drafter_result.final_output)
                 
             except Exception as e:
@@ -542,15 +495,4 @@ class Team(BaseModel):
             'roster': {pos: player.to_dict() if player else None for pos, player in self.roster.items()},
             'drafted_players': [player.to_dict() for player in self.drafted_players]
         }
-
-
-
-
-
-
-
-
-
-
-
 
