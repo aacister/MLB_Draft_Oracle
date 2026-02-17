@@ -332,4 +332,8 @@ All of the above build directly on the existing S3 vector files with no schema c
 
 ## 🖼️ Screenshots
 
-### Draft History
+![Draft](https://github.com/aacister/MLB_Draft_Oracle/blob/main/MlbDraftOracle_snapshot.PNG)
+
+![Roster](https://github.com/aacister/MLB_Draft_Oracle/blob/main/MlbDraftOracle_roster.PNG)
+
+
